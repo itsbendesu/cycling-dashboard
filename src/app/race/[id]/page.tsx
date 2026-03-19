@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ALL_RACES, getRaceStatus, getStageDay, CLASS_COLORS } from "@/lib/races";
 import { countryFlag } from "@/lib/countryFlags";
 import { fetchRaceHighlights } from "@/lib/youtube";
+import { fetchRaceResults } from "@/lib/wikipedia";
 import { HighlightsSection } from "@/components/HighlightsSection";
+import { RaceResultsPanel } from "@/components/RaceResultsPanel";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -36,10 +38,10 @@ export default async function RacePage({
 
   const status = getRaceStatus(race);
   const stageDay = getStageDay(race);
-  const highlights = await fetchRaceHighlights(
-    race.youtubeSearchTerm || race.name,
-    6
-  );
+  const [highlights, raceResults] = await Promise.all([
+    fetchRaceHighlights(race.youtubeSearchTerm || race.name, 6),
+    status !== "upcoming" ? fetchRaceResults(race.id) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="min-h-screen">
@@ -145,7 +147,7 @@ export default async function RacePage({
         <div className="flex flex-wrap gap-3 mb-10">
           {race.pcsSlug && (
             <a
-              href={`https://www.procyclingstats.com/race/${race.pcsSlug}/2025`}
+              href={`https://www.procyclingstats.com/race/${race.pcsSlug}/2026`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted hover:text-foreground hover:border-zinc-600 transition-all"
@@ -159,7 +161,7 @@ export default async function RacePage({
             </a>
           )}
           <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(race.youtubeSearchTerm || race.name + " 2025")}`}
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(race.youtubeSearchTerm || race.name + " 2026")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted hover:text-foreground hover:border-zinc-600 transition-all"
@@ -170,6 +172,14 @@ export default async function RacePage({
             YouTube Highlights
           </a>
         </div>
+
+        {/* Results */}
+        {raceResults && (raceResults.winner || raceResults.classifications.length > 0 || raceResults.stages.length > 0) && (
+          <div className="mb-10">
+            <h2 className="text-lg font-semibold mb-4">Results</h2>
+            <RaceResultsPanel results={raceResults} />
+          </div>
+        )}
 
         {/* Highlights */}
         {highlights.length > 0 && (

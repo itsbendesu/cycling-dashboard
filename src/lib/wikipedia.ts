@@ -1,0 +1,257 @@
+import * as cheerio from "cheerio";
+
+export interface RaceResult {
+  rank: number;
+  rider: string;
+  nationality: string;
+  team: string;
+  time: string;
+}
+
+export interface StageResult {
+  stageNumber: number;
+  stageName: string;
+  results: RaceResult[];
+  gcAfterStage: RaceResult[];
+}
+
+export interface ClassificationStanding {
+  name: string; // "General classification", "Points classification", etc.
+  results: RaceResult[];
+}
+
+export interface RaceResults {
+  winner: string | null;
+  winnerNat: string | null;
+  winnerTeam: string | null;
+  second: string | null;
+  third: string | null;
+  totalTime: string | null;
+  distance: string | null;
+  stages: StageResult[];
+  classifications: ClassificationStanding[];
+}
+
+// Map race IDs to Wikipedia article names
+const WIKI_SLUGS: Record<string, string> = {
+  // Stage races
+  "tdf": "Tour_de_France",
+  "giro": "Giro_d%%27Italia",
+  "vuelta": "Vuelta_a_España",
+  "pn": "Paris%%E2%%80%%93Nice",
+  "tirreno": "Tirreno%%E2%%80%%93Adriatico",
+  "catalan": "Volta_a_Catalunya",
+  "pv": "Itzulia_Basque_Country",
+  "romandie": "Tour_de_Romandie",
+  "dauphine": "Critérium_du_Dauphiné",
+  "suisse": "Tour_de_Suisse",
+  "tdu": "Tour_Down_Under",
+  "uae": "UAE_Tour",
+  // One-day
+  "msr": "Milan%%E2%%80%%93San_Remo",
+  "rvv": "Tour_of_Flanders",
+  "pr": "Paris%%E2%%80%%93Roubaix",
+  "lg": "Liège%%E2%%80%%93Bastogne%%E2%%80%%93Liège",
+  "lombardia": "Giro_di_Lombardia",
+  "strade": "Strade_Bianche",
+  "e3": "E3_Saxo_Classic",
+  "gw": "Ghent%%E2%%80%%93Wevelgem",
+  "aw": "Amstel_Gold_Race",
+  "fw": "La_Flèche_Wallonne",
+  "sanSeb": "Clásica_de_San_Sebastián",
+  "quebec": "Grand_Prix_Cycliste_de_Québec",
+  "montreal": "Grand_Prix_Cycliste_de_Montréal",
+};
+
+function getWikiSlug(raceId: string): string | null {
+  // Strip year suffix: "pn-2026" -> "pn"
+  const base = raceId.replace(/-\d{4}$/, "");
+  return WIKI_SLUGS[base] || null;
+}
+
+function parseRiderCell(text: string): { rider: string; nationality: string } {
+  // Format: " Jonas Vingegaard (DEN)" or similar
+  const cleaned = text.replace(/\u00a0/g, " ").trim();
+  const natMatch = cleaned.match(/\(([A-Z]{3})\)\s*$/);
+  const nationality = natMatch ? natMatch[1] : "";
+  const rider = cleaned.replace(/\s*\([A-Z]{3}\)\s*$/, "").trim();
+  return { rider, nationality };
+}
+
+function parseResultsTable($: cheerio.CheerioAPI, table: ReturnType<cheerio.CheerioAPI>): RaceResult[] {
+  const results: RaceResult[] = [];
+  const rows = table.find("tr");
+
+  rows.each((_, row) => {
+    const cells = $(row).find("td");
+    if (cells.length < 4) return;
+
+    const rankText = $(cells[0]).text().trim();
+    const rank = parseInt(rankText, 10);
+    if (isNaN(rank)) return;
+
+    const { rider, nationality } = parseRiderCell($(cells[1]).text());
+    const team = $(cells[2]).text().trim();
+    const time = $(cells[3]).text().trim();
+
+    if (rider) {
+      results.push({ rank, rider, nationality, team, time });
+    }
+  });
+
+  return results;
+}
+
+export async function fetchRaceResults(raceId: string, year: number = 2026): Promise<RaceResults | null> {
+  const slug = getWikiSlug(raceId);
+  if (!slug) return null;
+
+  const pageTitle = `${year}_${slug}`;
+
+  try {
+    // First get the infobox data
+    const infoRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&prop=wikitext&section=0&format=json`,
+      { next: { revalidate: 3600 } }
+    );
+
+    if (!infoRes.ok) return null;
+    const infoData = await infoRes.json();
+
+    if (infoData.error) return null;
+
+    const wikitext = infoData.parse?.wikitext?.["*"] || "";
+
+    // Parse infobox fields
+    const winner = wikitext.match(/\|\s*first\s*=\s*\[\[([^\]|]+)/)?.[1] || null;
+    const winnerNat = wikitext.match(/\|\s*first_nat\s*=\s*(\w+)/)?.[1] || null;
+    const second = wikitext.match(/\|\s*second\s*=\s*\[\[([^\]|]+)/)?.[1] || null;
+    const third = wikitext.match(/\|\s*third\s*=\s*\[\[([^\]|]+)/)?.[1] || null;
+    const totalTime = wikitext.match(/\|\s*time\s*=\s*([^\n]+)/)?.[1]?.trim() || null;
+    const distance = wikitext.match(/\|\s*distance\s*=\s*([^\n]+)/)?.[1]?.trim() || null;
+
+    // Get team name from wikitext template
+    const winnerTeamMatch = wikitext.match(/\|\s*first_team\s*=\s*\{\{[^|]*\|([^|}\n]+)/);
+    const winnerTeam = winnerTeamMatch ? winnerTeamMatch[1].trim() : null;
+
+    // Get sections to find classifications
+    const sectionsRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&prop=sections&format=json`,
+      { next: { revalidate: 3600 } }
+    );
+    const sectionsData = await sectionsRes.json();
+    const sections = sectionsData.parse?.sections || [];
+
+    // Find stage sections and classification sections
+    const stageSections = sections.filter(
+      (s: { line: string; level: string }) => /^Stage\s+\d+/.test(s.line) && s.level === "3"
+    );
+    const classificationSections = sections.filter(
+      (s: { line: string; level: string }) =>
+        /(general|points|mountains|young|teams?)\s+classification/i.test(s.line) && s.level === "3"
+    );
+
+    // Fetch stage results (limit to last 3 stages to avoid too many requests)
+    const recentStages = stageSections.slice(-3);
+    const stageResults: StageResult[] = [];
+
+    for (const section of recentStages) {
+      try {
+        const stageRes = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&section=${section.index}&prop=text&format=json`,
+          { next: { revalidate: 3600 } }
+        );
+        const stageData = await stageRes.json();
+        const html = stageData.parse?.text?.["*"] || "";
+        const $ = cheerio.load(html);
+        const tables = $("table.wikitable");
+
+        const stageNum = parseInt(section.line.match(/Stage\s+(\d+)/)?.[1] || "0", 10);
+        const results: RaceResult[] = [];
+        const gcAfter: RaceResult[] = [];
+
+        tables.each((i, table) => {
+          const caption = $(table).find("caption").text() || $(table).prev("p, h3, h4").text();
+          const parsed = parseResultsTable($, $(table));
+
+          if (i === 0 || /stage.*result/i.test(caption)) {
+            results.push(...parsed);
+          } else if (/general\s*classification/i.test(caption) || i === 1) {
+            gcAfter.push(...parsed);
+          }
+        });
+
+        if (results.length > 0) {
+          stageResults.push({
+            stageNumber: stageNum,
+            stageName: section.line,
+            results,
+            gcAfterStage: gcAfter,
+          });
+        }
+      } catch {
+        // Skip failed stage fetches
+      }
+    }
+
+    // Fetch classification standings
+    const classifications: ClassificationStanding[] = [];
+
+    for (const section of classificationSections) {
+      try {
+        const classRes = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&section=${section.index}&prop=text&format=json`,
+          { next: { revalidate: 3600 } }
+        );
+        const classData = await classRes.json();
+        const html = classData.parse?.text?.["*"] || "";
+        const $ = cheerio.load(html);
+
+        const table = $("table.wikitable").first();
+        if (table.length) {
+          const results = parseResultsTable($, table);
+          if (results.length > 0) {
+            classifications.push({
+              name: section.line,
+              results,
+            });
+          }
+        }
+      } catch {
+        // Skip failed classification fetches
+      }
+    }
+
+    return {
+      winner,
+      winnerNat,
+      winnerTeam,
+      second,
+      third,
+      totalTime,
+      distance,
+      stages: stageResults,
+      classifications,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Check if a Wikipedia article exists for a race
+export async function raceHasResults(raceId: string, year: number = 2026): Promise<boolean> {
+  const slug = getWikiSlug(raceId);
+  if (!slug) return false;
+
+  try {
+    const res = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&titles=${year}_${slug}&format=json`,
+      { next: { revalidate: 3600 } }
+    );
+    const data = await res.json();
+    const pages = data.query?.pages || {};
+    return !Object.keys(pages).includes("-1");
+  } catch {
+    return false;
+  }
+}
