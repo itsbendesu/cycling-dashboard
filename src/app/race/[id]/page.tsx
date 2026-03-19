@@ -134,7 +134,6 @@ export default async function RacePage({
             {race.startDate !== race.endDate && ` – ${formatDateShort(race.endDate)}`}
             {race.distance && ` · ${race.distance}`}
             {race.stages && ` · ${race.stages} stages`}
-            {race.estimated && " · dates estimated"}
           </p>
         </div>
 

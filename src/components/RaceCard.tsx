@@ -88,9 +88,6 @@ export function RaceCard({ race }: { race: Race }) {
             <StatusBadge status={status} race={race} />
           </div>
         </div>
-        {race.estimated && (
-          <p className="mt-2 text-[10px] text-muted/60 italic">Dates estimated</p>
-        )}
       </div>
     </Link>
   );
