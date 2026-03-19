@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Race, RACES_2025, getRaceStatus, CLASS_COLORS, RaceClass } from "@/lib/races";
+import { Race, ALL_RACES, getRaceStatus, CLASS_COLORS, RaceClass } from "@/lib/races";
 import { RaceCard } from "./RaceCard";
 
 type Filter = "all" | RaceClass;
@@ -27,10 +27,12 @@ function groupByMonth(races: Race[]): Record<string, Race[]> {
 
 export function CalendarView() {
   const [filter, setFilter] = useState<Filter>("all");
-  const [showCompleted, setShowCompleted] = useState(false);
-
+  // Auto-detect: if all races are completed, show them by default
   const today = new Date().toISOString().split("T")[0];
-  const filtered = RACES_2025.filter((r) => {
+  const allCompleted = ALL_RACES.every((r) => getRaceStatus(r, today) === "completed");
+  const [showCompleted, setShowCompleted] = useState(allCompleted);
+
+  const filtered = ALL_RACES.filter((r) => {
     if (filter !== "all" && r.class !== filter) return false;
     if (!showCompleted && getRaceStatus(r, today) === "completed") return false;
     return true;

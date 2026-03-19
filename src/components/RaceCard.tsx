@@ -88,11 +88,8 @@ export function RaceCard({ race }: { race: Race }) {
             <StatusBadge status={status} race={race} />
           </div>
         </div>
-        {status === "completed" && race.winner2024 && (
-          <p className="mt-2 text-xs text-muted">
-            <span className="text-zinc-500">2024:</span>{" "}
-            <span className="text-zinc-400">{race.winner2024}</span>
-          </p>
+        {race.estimated && (
+          <p className="mt-2 text-[10px] text-zinc-600 italic">Dates estimated</p>
         )}
       </div>
     </Link>

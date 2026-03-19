@@ -1,11 +1,11 @@
 "use client";
 
-import { getUpcomingRaces, getActiveRaces, RACES_2025 } from "@/lib/races";
+import { getUpcomingRaces, getActiveRaces, ALL_RACES } from "@/lib/races";
 import { RaceCardCompact } from "./RaceCard";
 
 export function NextUpSidebar() {
-  const active = getActiveRaces(RACES_2025);
-  const upcoming = getUpcomingRaces(RACES_2025, 8);
+  const active = getActiveRaces(ALL_RACES);
+  const upcoming = getUpcomingRaces(ALL_RACES, 8);
 
   // Filter upcoming to not include active races
   const activeIds = new Set(active.map((r) => r.id));
@@ -41,24 +41,24 @@ export function NextUpSidebar() {
       {/* Season stats */}
       <div className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">
-          2025 Season
+          2026 Season
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-2xl font-bold font-mono text-foreground">
-              {RACES_2025.length}
+              {ALL_RACES.length}
             </p>
             <p className="text-xs text-muted">Races tracked</p>
           </div>
           <div>
             <p className="text-2xl font-bold font-mono text-foreground">
-              {RACES_2025.filter((r) => r.class === "Grand Tour").length}
+              {ALL_RACES.filter((r) => r.class === "Grand Tour").length}
             </p>
             <p className="text-xs text-muted">Grand Tours</p>
           </div>
           <div>
             <p className="text-2xl font-bold font-mono text-foreground">
-              {RACES_2025.filter((r) => r.class === "Monument").length}
+              {ALL_RACES.filter((r) => r.class === "Monument").length}
             </p>
             <p className="text-xs text-muted">Monuments</p>
           </div>

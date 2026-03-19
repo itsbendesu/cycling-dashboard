@@ -26,7 +26,7 @@ export default async function Home() {
                   Peloton
                 </h1>
               </div>
-              <span className="text-xs text-muted font-mono">2025</span>
+              <span className="text-xs text-muted font-mono">2026</span>
             </div>
             <nav className="flex items-center gap-4 text-sm">
               <span className="text-foreground font-medium">Calendar</span>
@@ -46,7 +46,7 @@ export default async function Home() {
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-1">Race Calendar</h2>
               <p className="text-sm text-muted">
-                UCI WorldTour, Monuments, and key races for the 2025 season.
+                UCI WorldTour, Monuments, and key races for the 2026 season.
               </p>
             </div>
             <CalendarView />

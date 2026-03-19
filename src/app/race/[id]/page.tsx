@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { RACES_2025, getRaceStatus, getStageDay, CLASS_COLORS } from "@/lib/races";
+import { ALL_RACES, getRaceStatus, getStageDay, CLASS_COLORS } from "@/lib/races";
 import { countryFlag } from "@/lib/countryFlags";
 import { searchYouTubeHighlights } from "@/lib/youtube";
 import { HighlightsSection } from "@/components/HighlightsSection";
@@ -21,7 +21,7 @@ function daysUntil(dateStr: string): number {
 }
 
 export async function generateStaticParams() {
-  return RACES_2025.map((race) => ({ id: race.id }));
+  return ALL_RACES.map((race) => ({ id: race.id }));
 }
 
 export default async function RacePage({
@@ -30,7 +30,7 @@ export default async function RacePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const race = RACES_2025.find((r) => r.id === id);
+  const race = ALL_RACES.find((r) => r.id === id);
 
   if (!race) notFound();
 
@@ -125,12 +125,18 @@ export default async function RacePage({
             <p className="text-xs text-muted uppercase tracking-wider mb-1">Classification</p>
             <p className="text-lg font-bold">{race.class}</p>
           </div>
-          {race.winner2024 && (
+          {race.winner2025 && (
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted uppercase tracking-wider mb-1">
-                2024 Winner
+                2025 Winner
               </p>
-              <p className="text-lg font-bold">{race.winner2024}</p>
+              <p className="text-lg font-bold">{race.winner2025}</p>
+            </div>
+          )}
+          {race.estimated && (
+            <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4">
+              <p className="text-xs text-muted uppercase tracking-wider mb-1">Note</p>
+              <p className="text-sm text-zinc-400 italic">Dates estimated from historical patterns</p>
             </div>
           )}
         </div>
