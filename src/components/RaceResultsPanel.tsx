@@ -3,16 +3,6 @@
 import { useState } from "react";
 import { RaceResults } from "@/lib/wikipedia";
 
-function ClassificationIcon({ name }: { name: string }) {
-  const n = name.toLowerCase();
-  if (n.includes("general")) return <span className="text-yellow-400">GC</span>;
-  if (n.includes("points")) return <span className="text-green-400">Pts</span>;
-  if (n.includes("mountain")) return <span className="text-red-400">KOM</span>;
-  if (n.includes("young")) return <span className="text-white">Youth</span>;
-  if (n.includes("team")) return <span className="text-blue-400">Team</span>;
-  return null;
-}
-
 function ResultsTable({
   results,
   compact = false,
@@ -79,13 +69,8 @@ function ResultsTable({
 }
 
 export function RaceResultsPanel({ results }: { results: RaceResults }) {
-  type Tab = "gc" | "stages" | "classifications";
-  const [tab, setTab] = useState<Tab>(
-    results.classifications.length > 0 ? "gc" : results.stages.length > 0 ? "stages" : "gc"
-  );
-  const [expandedStage, setExpandedStage] = useState<number | null>(
-    results.stages.length > 0 ? results.stages[results.stages.length - 1].stageNumber : null
-  );
+  const [expanded, setExpanded] = useState(false);
+  const [expandedStage, setExpandedStage] = useState<number | null>(null);
 
   const gc = results.classifications.find((c) =>
     c.name.toLowerCase().includes("general")
@@ -94,17 +79,13 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
     (c) => !c.name.toLowerCase().includes("general")
   );
 
-  const tabs: { label: string; value: Tab; show: boolean }[] = [
-    { label: "GC", value: "gc", show: !!gc || !!results.winner },
-    { label: "Stages", value: "stages", show: results.stages.length > 0 },
-    { label: "Classifications", value: "classifications", show: otherClassifications.length > 0 },
-  ];
+  if (!results.winner && !gc && results.stages.length === 0) return null;
 
   return (
     <div>
-      {/* Podium summary */}
+      {/* Podium card — always visible */}
       {results.winner && (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 mb-6">
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
           <div className="flex items-center gap-3">
             <div className="text-2xl">🏆</div>
             <div>
@@ -134,98 +115,110 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="flex gap-1 mb-4 border-b border-border">
-        {tabs
-          .filter((t) => t.show)
-          .map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
-              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
-                tab === t.value
-                  ? "border-accent text-accent"
-                  : "border-transparent text-muted hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-      </div>
-
-      {/* GC tab */}
-      {tab === "gc" && gc && (
-        <ResultsTable results={gc.results} />
+      {/* Expand toggle */}
+      {(gc || results.stages.length > 0 || otherClassifications.length > 0) && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1.5 mt-3 text-xs text-muted hover:text-foreground transition-colors"
+        >
+          <svg
+            className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+          {expanded ? "Hide details" : "GC, stages & classifications"}
+        </button>
       )}
 
-      {/* Stages tab */}
-      {tab === "stages" && (
-        <div className="space-y-2">
-          {results.stages.map((stage) => (
-            <div key={stage.stageNumber} className="rounded-lg border border-border">
-              <button
-                onClick={() =>
-                  setExpandedStage(
-                    expandedStage === stage.stageNumber ? null : stage.stageNumber
-                  )
-                }
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-card-hover transition-colors"
-              >
-                <span className="text-sm font-medium">{stage.stageName}</span>
-                <div className="flex items-center gap-2">
-                  {stage.results[0] && (
-                    <span className="text-xs text-muted">
-                      Winner: <span className="text-foreground">{stage.results[0].rider}</span>
-                    </span>
-                  )}
-                  <svg
-                    className={`w-4 h-4 text-muted transition-transform ${
-                      expandedStage === stage.stageNumber ? "rotate-180" : ""
-                    }`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </div>
-              </button>
-              {expandedStage === stage.stageNumber && (
-                <div className="px-4 pb-4 space-y-4">
-                  <div>
-                    <h4 className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
-                      Stage Result
-                    </h4>
-                    <ResultsTable results={stage.results} compact />
+      {/* Expanded content */}
+      {expanded && (
+        <div className="mt-4 space-y-6">
+          {/* GC */}
+          {gc && (
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+                General Classification
+              </h3>
+              <ResultsTable results={gc.results} />
+            </div>
+          )}
+
+          {/* Stages */}
+          {results.stages.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+                Stage Results
+              </h3>
+              <div className="space-y-1">
+                {results.stages.map((stage) => (
+                  <div key={stage.stageNumber} className="rounded-lg border border-border">
+                    <button
+                      onClick={() =>
+                        setExpandedStage(
+                          expandedStage === stage.stageNumber ? null : stage.stageNumber
+                        )
+                      }
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-card-hover transition-colors text-sm"
+                    >
+                      <span className="font-medium">{stage.stageName}</span>
+                      <div className="flex items-center gap-2">
+                        {stage.results[0] && (
+                          <span className="text-xs text-muted">
+                            {stage.results[0].rider}
+                          </span>
+                        )}
+                        <svg
+                          className={`w-3.5 h-3.5 text-muted transition-transform ${
+                            expandedStage === stage.stageNumber ? "rotate-180" : ""
+                          }`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                      </div>
+                    </button>
+                    {expandedStage === stage.stageNumber && (
+                      <div className="px-3 pb-3 space-y-3">
+                        <ResultsTable results={stage.results} compact />
+                        {stage.gcAfterStage.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted mb-1">
+                              GC after stage
+                            </p>
+                            <ResultsTable results={stage.gcAfterStage} compact />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {stage.gcAfterStage.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
-                        GC After Stage
-                      </h4>
-                      <ResultsTable results={stage.gcAfterStage} compact />
-                    </div>
-                  )}
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Classifications tab */}
-      {tab === "classifications" && (
-        <div className="space-y-6">
-          {otherClassifications.map((c) => (
-            <div key={c.name}>
-              <h4 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted mb-2">
-                <ClassificationIcon name={c.name} />
-                {c.name}
-              </h4>
-              <ResultsTable results={c.results} compact />
+          {/* Other classifications */}
+          {otherClassifications.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted mb-2">
+                Classifications
+              </h3>
+              <div className="space-y-4">
+                {otherClassifications.map((c) => (
+                  <div key={c.name}>
+                    <p className="text-xs text-muted mb-1">{c.name}</p>
+                    <ResultsTable results={c.results} compact />
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
