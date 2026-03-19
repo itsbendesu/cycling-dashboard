@@ -121,7 +121,7 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
       {hasExpandable && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1.5 mt-3 text-xs text-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 mt-4 rounded-md border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 text-xs font-medium text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20 transition-colors"
         >
           <svg
             className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
