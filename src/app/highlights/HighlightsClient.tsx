@@ -74,9 +74,26 @@ export function HighlightsClient({
 
         {filtered.length > 0 ? (
           <HighlightsSection videos={filtered} />
+        ) : selectedRaceData?.tizUrl ? (
+          <div className="text-center py-12">
+            <p className="text-muted mb-4">
+              No YouTube highlights found, but full race coverage is available on tiz.
+            </p>
+            <a
+              href={selectedRaceData.tizUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/10 transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Watch on tiz-cycling
+            </a>
+          </div>
         ) : (
           <p className="text-center text-muted py-12">
-            No extended highlights available for this race yet.
+            No highlights available for this race yet.
           </p>
         )}
       </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ALL_RACES, getRaceStatus } from "@/lib/races";
-import { fetchHighlights, YouTubeVideo } from "@/lib/youtube";
+import { fetchHighlights, fetchAllRaceHighlights, YouTubeVideo } from "@/lib/youtube";
 import { getTizUrl } from "@/lib/tiz";
 import { HighlightsClient } from "./HighlightsClient";
 
@@ -13,82 +13,85 @@ export interface RaceFilterOption {
   videoCount: number;
 }
 
-function matchVideoToRace(
-  video: YouTubeVideo,
-  race: (typeof ALL_RACES)[number]
-): boolean {
-  const searchTerms = (race.youtubeSearchTerm || race.name)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['']/g, "")
-    .split(/[\s-]+/)
-    .filter(
-      (t) =>
-        t.length > 2 &&
-        !["the", "and", "des", "del", "2026", "2025", "highlights"].includes(t)
-    );
-
-  const title = video.title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  return searchTerms.some((term) => title.includes(term));
-}
-
 export default async function HighlightsPage() {
   const today = new Date().toISOString().split("T")[0];
 
-  const allHighlights = await fetchHighlights(60);
-
-  // Build race filter options — only races that have at least one highlight
+  // Get completed and active races, most recent first
   const relevantRaces = ALL_RACES.filter((r) => {
     const status = getRaceStatus(r, today);
     return status === "completed" || status === "active";
   }).sort((a, b) => b.startDate.localeCompare(a.startDate));
 
-  // Tag each video with its matching race IDs
+  // Build race queries for search
+  const raceQueries = relevantRaces.map((r) => ({
+    id: r.id,
+    searchTerm: r.youtubeSearchTerm || r.name,
+  }));
+
+  // Fetch RSS highlights + per-race search in parallel
+  const [allHighlights, perRaceHighlights] = await Promise.all([
+    fetchHighlights(60),
+    fetchAllRaceHighlights(raceQueries),
+  ]);
+
+  // Combine: all videos (deduped)
+  const seen = new Set<string>();
+  const allVideos: YouTubeVideo[] = [];
+  for (const v of allHighlights) {
+    if (!seen.has(v.id)) { seen.add(v.id); allVideos.push(v); }
+  }
+  for (const videos of Object.values(perRaceHighlights)) {
+    for (const v of videos) {
+      if (!seen.has(v.id)) { seen.add(v.id); allVideos.push(v); }
+    }
+  }
+
+  // Build video-to-race mapping
   const videoRaceMap: Record<string, string[]> = {};
-  for (const video of allHighlights) {
-    videoRaceMap[video.id] = [];
-    for (const race of relevantRaces) {
-      if (matchVideoToRace(video, race)) {
-        videoRaceMap[video.id].push(race.id);
+  for (const v of allVideos) {
+    videoRaceMap[v.id] = [];
+  }
+  for (const [raceId, videos] of Object.entries(perRaceHighlights)) {
+    for (const v of videos) {
+      if (!videoRaceMap[v.id]) videoRaceMap[v.id] = [];
+      videoRaceMap[v.id].push(raceId);
+    }
+  }
+  // Also check RSS highlights against race names
+  for (const race of relevantRaces) {
+    const terms = (race.youtubeSearchTerm || race.name)
+      .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/['']/g, "").split(/[\s-]+/)
+      .filter((t: string) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025", "highlights"].includes(t));
+
+    for (const v of allVideos) {
+      const title = v.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (terms.some((term: string) => title.includes(term)) && !videoRaceMap[v.id]?.includes(race.id)) {
+        videoRaceMap[v.id].push(race.id);
       }
     }
   }
 
+  // Build race filter options
   const raceFilters: RaceFilterOption[] = relevantRaces
-    .map((race) => {
-      const count = allHighlights.filter((v) =>
-        videoRaceMap[v.id]?.includes(race.id)
-      ).length;
-      return {
-        id: race.id,
-        name: race.name,
-        shortName: race.shortName || race.name,
-        countryCode: race.countryCode,
-        tizUrl: getTizUrl(race.id),
-        videoCount: count,
-      };
-    })
-    .filter((r) => r.videoCount > 0);
+    .map((race) => ({
+      id: race.id,
+      name: race.name,
+      shortName: race.shortName || race.name,
+      countryCode: race.countryCode,
+      tizUrl: getTizUrl(race.id),
+      videoCount: allVideos.filter((v) => videoRaceMap[v.id]?.includes(race.id)).length,
+    }))
+    .filter((r) => r.videoCount > 0 || r.tizUrl !== null);
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/" className="flex items-center gap-1.5">
-                <svg
-                  className="w-6 h-6 text-accent"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+                <svg className="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
                   <circle cx="12" cy="12" r="3" />
                   <line x1="12" y1="2" x2="12" y2="5" />
@@ -101,18 +104,8 @@ export default async function HighlightsPage() {
               <span className="text-xs text-muted font-mono">2026</span>
             </div>
             <nav className="flex items-center gap-4 text-sm">
-              <Link
-                href="/"
-                className="text-muted hover:text-foreground transition-colors"
-              >
-                Calendar
-              </Link>
-              <Link
-                href="/results"
-                className="text-muted hover:text-foreground transition-colors"
-              >
-                Results
-              </Link>
+              <Link href="/" className="text-muted hover:text-foreground transition-colors">Calendar</Link>
+              <Link href="/results" className="text-muted hover:text-foreground transition-colors">Results</Link>
               <span className="text-foreground font-medium">Highlights</span>
             </nav>
           </div>
@@ -123,12 +116,12 @@ export default async function HighlightsPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1">Race Highlights</h1>
           <p className="text-sm text-muted">
-            Extended highlights from Tour de France and TNT Sports Cycling.
+            Extended highlights from official race channels. Full races and final KM on tiz.
           </p>
         </div>
 
         <HighlightsClient
-          videos={allHighlights}
+          videos={allVideos}
           videoRaceMap={videoRaceMap}
           raceFilters={raceFilters}
         />

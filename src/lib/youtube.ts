@@ -7,40 +7,44 @@ export interface YouTubeVideo {
   views?: number;
 }
 
-// Only official extended highlights channels
-const HIGHLIGHT_CHANNELS = [
-  { id: "UCSpycUnuU0IVF7gGIhGojhg", name: "Tour de France" }, // ASO: TdF, Paris-Nice, Dauphiné, Paris-Roubaix, LBL, Flèche, Strade Bianche
-  { id: "UCfDfvvMARk4TKcC62ALi6eA", name: "TNT Sports Cycling" }, // Formerly Eurosport: Flanders, other classics
+// Official extended highlights channels (RSS feeds)
+const RSS_CHANNELS = [
+  { id: "UCSpycUnuU0IVF7gGIhGojhg", name: "Tour de France" },
+  { id: "UCfDfvvMARk4TKcC62ALi6eA", name: "TNT Sports Cycling" },
+  { id: "UCe10BxbsFg9Kbmkg-ean_Dg", name: "Giro d'Italia" },
 ];
 
-function isExtendedHighlight(title: string): boolean {
+function isHighlight(title: string): boolean {
   const t = title.toLowerCase();
 
-  // Only extended/full highlights
+  // Exclude filler
+  const excludes = [
+    /jersey\s*minute/, /most\s*aggressive/, /polka\s*dot/, /preview/,
+    /prediction/, /podcast/, /how\s*to/, /training/, /bike\s*(check|review)/,
+    /unbox/, /nutrition/, /behind\s*the\s*scenes/, /press\s*conference/,
+    /presentation/, /discover\s*(stage|the\s*route)/, /throwback/,
+    /best\s*of\s*rivals/, /fashion\s*show/, /shoe\s*change/, /#shorts/,
+    /heartbreak\s*and/, /everything.*ready/, /route\s*of\s*the/,
+  ];
+  if (excludes.some((p) => p.test(t))) return false;
+
+  // Accept: extended highlights, highlights, final km
   if (/extended\s*highlights?/.test(t)) return true;
   if (/full\s*highlights?/.test(t)) return true;
-  if (/highlights?\s*of\s*the\s*\d{4}\s*edition/.test(t)) return true;
+  if (/highlights?\s*(of|from)/.test(t)) return true;
+  if (/\bhighlights\b/.test(t) && /stage|men|women|edition/.test(t)) return true;
+  if (/final\s*km|last\s*km/.test(t)) return true;
 
   return false;
 }
 
-interface FeedEntry {
-  videoId: string;
-  title: string;
-  thumbnail: string;
-  published: string;
-  channelName: string;
-  views: number;
-}
-
-function parseXMLFeed(xml: string, channelName: string): FeedEntry[] {
-  const entries: FeedEntry[] = [];
+function parseXMLFeed(xml: string, channelName: string): YouTubeVideo[] {
+  const videos: YouTubeVideo[] = [];
   const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
   let match;
 
   while ((match = entryRegex.exec(xml)) !== null) {
     const entry = match[1];
-
     const videoId = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1];
     const title = entry.match(/<title>([^<]+)<\/title>/)?.[1];
     const thumbnail = entry.match(/<media:thumbnail url="([^"]+)"/)?.[1];
@@ -48,31 +52,75 @@ function parseXMLFeed(xml: string, channelName: string): FeedEntry[] {
     const viewsStr = entry.match(/<media:statistics views="(\d+)"/)?.[1];
 
     if (videoId && title) {
-      entries.push({
-        videoId,
-        title: decodeXMLEntities(title),
+      const decoded = decodeXMLEntities(title);
+      videos.push({
+        id: videoId,
+        title: decoded,
         thumbnail: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-        published: published || "",
-        channelName,
+        publishedAt: published || "",
+        channelTitle: channelName,
         views: viewsStr ? parseInt(viewsStr, 10) : 0,
       });
     }
   }
-
-  return entries;
+  return videos;
 }
 
 function decodeXMLEntities(str: string): string {
   return str
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 }
 
-export async function fetchHighlights(maxResults: number = 60): Promise<YouTubeVideo[]> {
-  const feedPromises = HIGHLIGHT_CHANNELS.map(async (channel) => {
+// Scrape YouTube search results for a query (no API key needed)
+async function searchYouTube(query: string, maxResults: number = 10): Promise<YouTubeVideo[]> {
+  try {
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Extract video data from the initial data JSON
+    const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/);
+    if (!dataMatch) return [];
+
+    const videos: YouTubeVideo[] = [];
+    // Extract video IDs and titles using regex on the JSON blob
+    const videoRegex = /"videoId":"([^"]+)"[^}]*?"title":\{"runs":\[\{"text":"([^"]+)"/g;
+    const seen = new Set<string>();
+    let m;
+    while ((m = videoRegex.exec(dataMatch[1])) !== null && videos.length < maxResults) {
+      const [, videoId, title] = m;
+      if (seen.has(videoId)) continue;
+      seen.add(videoId);
+
+      // Try to extract channel name near this video
+      const channelMatch = dataMatch[1].slice(m.index, m.index + 2000)
+        .match(/"ownerText":\{"runs":\[\{"text":"([^"]+)"/);
+
+      videos.push({
+        id: videoId,
+        title: decodeXMLEntities(title),
+        thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        publishedAt: "", // not available from search
+        channelTitle: channelMatch ? channelMatch[1] : "",
+      });
+    }
+    return videos;
+  } catch {
+    return [];
+  }
+}
+
+// Fetch highlights from RSS feeds
+async function fetchRSSHighlights(): Promise<YouTubeVideo[]> {
+  const feedPromises = RSS_CHANNELS.map(async (channel) => {
     try {
       const res = await fetch(
         `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.id}`,
@@ -87,43 +135,98 @@ export async function fetchHighlights(maxResults: number = 60): Promise<YouTubeV
   });
 
   const results = await Promise.all(feedPromises);
-  const allEntries = results.flat();
-
-  // Only extended highlights
-  const highlights = allEntries.filter((e) => isExtendedHighlight(e.title));
-
-  // Sort by date descending (most recent first)
-  highlights.sort((a, b) => new Date(b.published).getTime() - new Date(a.published).getTime());
-
-  return highlights.slice(0, maxResults).map((e) => ({
-    id: e.videoId,
-    title: e.title,
-    thumbnail: e.thumbnail,
-    publishedAt: e.published,
-    channelTitle: e.channelName,
-    views: e.views,
-  }));
+  return results.flat().filter((v) => isHighlight(v.title));
 }
 
-// Get highlights filtered for a specific race
+// Search YouTube for highlights of a specific race
+async function searchRaceHighlights(raceName: string): Promise<YouTubeVideo[]> {
+  const results = await searchYouTube(`${raceName} 2026 extended highlights`);
+  // Filter to only keep actual highlight videos
+  return results.filter((v) => {
+    const t = v.title.toLowerCase();
+    return /highlights?|final\s*km|last\s*km/.test(t) && /2026/.test(t);
+  });
+}
+
+// Main entry: get all highlights (RSS + search for past races)
+export async function fetchHighlights(maxResults: number = 60): Promise<YouTubeVideo[]> {
+  const rssHighlights = await fetchRSSHighlights();
+
+  // Sort by date descending
+  rssHighlights.sort((a, b) =>
+    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
+
+  return rssHighlights.slice(0, maxResults);
+}
+
+// Get highlights for a specific race — uses search to find older ones
 export async function fetchRaceHighlights(
   raceName: string,
   maxResults: number = 6
 ): Promise<YouTubeVideo[]> {
-  const all = await fetchHighlights(60);
-
+  // First check RSS feeds
+  const rss = await fetchRSSHighlights();
   const searchTerms = raceName
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/['']/g, "")
-    .split(/[\s-]+/)
+    .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/['']/g, "").split(/[\s-]+/)
     .filter((t) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025"].includes(t));
 
-  const relevant = all.filter((v) => {
+  const fromRSS = rss.filter((v) => {
     const title = v.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     return searchTerms.some((term) => title.includes(term));
   });
 
-  return relevant.length > 0 ? relevant.slice(0, maxResults) : all.slice(0, maxResults);
+  if (fromRSS.length >= maxResults) {
+    return fromRSS.slice(0, maxResults);
+  }
+
+  // Fall back to YouTube search for older races
+  const fromSearch = await searchRaceHighlights(raceName);
+  const seen = new Set(fromRSS.map((v) => v.id));
+  const combined = [...fromRSS, ...fromSearch.filter((v) => !seen.has(v.id))];
+
+  return combined.slice(0, maxResults);
+}
+
+// Fetch highlights grouped by race (for the highlights page)
+export async function fetchAllRaceHighlights(
+  raceQueries: { id: string; searchTerm: string }[]
+): Promise<Record<string, YouTubeVideo[]>> {
+  const rss = await fetchRSSHighlights();
+  const results: Record<string, YouTubeVideo[]> = {};
+
+  // First pass: match RSS highlights to races
+  const unmatched: string[] = [];
+
+  for (const { id, searchTerm } of raceQueries) {
+    const terms = searchTerm
+      .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/['']/g, "").split(/[\s-]+/)
+      .filter((t) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025", "highlights"].includes(t));
+
+    const matched = rss.filter((v) => {
+      const title = v.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return terms.some((term) => title.includes(term));
+    });
+
+    if (matched.length > 0) {
+      results[id] = matched;
+    } else {
+      unmatched.push(id);
+    }
+  }
+
+  // Second pass: search YouTube for races with no RSS matches
+  const searchPromises = unmatched.map(async (raceId) => {
+    const query = raceQueries.find((r) => r.id === raceId);
+    if (!query) return;
+    const found = await searchRaceHighlights(query.searchTerm);
+    if (found.length > 0) {
+      results[raceId] = found;
+    }
+  });
+  await Promise.all(searchPromises);
+
+  return results;
 }
