@@ -87,9 +87,9 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
     <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
       {/* Podium — always visible */}
       {results.winner && (
-        <div>
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="text-2xl">🏆</div>
+            <div className="text-2xl">🥇</div>
             <div>
               <p className="font-semibold text-foreground">{results.winner}</p>
               <p className="text-xs text-muted">
@@ -98,20 +98,20 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
               </p>
             </div>
           </div>
-          {(results.second || results.third) && (
-            <div className="flex gap-6 mt-3 pl-11 text-sm">
-              {results.second && (
-                <div>
-                  <span className="text-muted">2.</span>{" "}
-                  <span className="text-foreground">{results.second}</span>
-                </div>
-              )}
-              {results.third && (
-                <div>
-                  <span className="text-muted">3.</span>{" "}
-                  <span className="text-foreground">{results.third}</span>
-                </div>
-              )}
+          {results.second && (
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">🥈</div>
+              <div>
+                <p className="font-semibold text-foreground">{results.second}</p>
+              </div>
+            </div>
+          )}
+          {results.third && (
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">🥉</div>
+              <div>
+                <p className="font-semibold text-foreground">{results.third}</p>
+              </div>
             </div>
           )}
         </div>
