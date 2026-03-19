@@ -1,6 +1,6 @@
 import { CalendarView } from "@/components/CalendarView";
 import { NextUpSidebar } from "@/components/NextUpSidebar";
-import { Logo } from "@/components/Logo";
+
 
 export default async function Home() {
   return (
@@ -10,13 +10,9 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <Logo className="w-6 h-6 text-accent" />
-                <h1 className="text-lg font-bold tracking-tight">
-                  Peloton
-                </h1>
-              </div>
-              <span className="text-xs text-muted font-mono">2026</span>
+              <h1 className="text-lg font-bold tracking-tight">
+                Peloton<sup className="text-[10px] font-mono text-muted ml-0.5 -top-2 relative">26</sup>
+              </h1>
             </div>
             <nav className="flex items-center gap-4 text-sm">
               <span className="text-foreground font-medium">Calendar</span>

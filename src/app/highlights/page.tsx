@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ALL_RACES, getRaceStatus } from "@/lib/races";
 import { fetchHighlights, fetchAllRaceHighlights, YouTubeVideo } from "@/lib/youtube";
 import { getTizUrl } from "@/lib/tiz";
-import { Logo } from "@/components/Logo";
+
 import { HighlightsClient } from "./HighlightsClient";
 
 export interface RaceFilterOption {
@@ -91,11 +91,9 @@ export default async function HighlightsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-1.5">
-                <Logo className="w-6 h-6 text-accent" />
-                <span className="text-lg font-bold tracking-tight">Peloton</span>
+              <Link href="/" className="text-lg font-bold tracking-tight">
+                Peloton<sup className="text-[10px] font-mono text-muted ml-0.5 -top-2 relative">26</sup>
               </Link>
-              <span className="text-xs text-muted font-mono">2026</span>
             </div>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/" className="text-muted hover:text-foreground transition-colors">Calendar</Link>

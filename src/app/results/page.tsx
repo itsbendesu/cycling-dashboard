@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ALL_RACES, getRaceStatus, CLASS_COLORS } from "@/lib/races";
 import { fetchRaceResults, RaceResults } from "@/lib/wikipedia";
 import { countryFlag } from "@/lib/countryFlags";
-import { Logo } from "@/components/Logo";
+
 
 interface CompletedRaceWithResults {
   race: (typeof ALL_RACES)[number];
@@ -64,11 +64,9 @@ export default async function ResultsPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-1.5">
-                <Logo className="w-6 h-6 text-accent" />
-                <span className="text-lg font-bold tracking-tight">Peloton</span>
+              <Link href="/" className="text-lg font-bold tracking-tight">
+                Peloton<sup className="text-[10px] font-mono text-muted ml-0.5 -top-2 relative">26</sup>
               </Link>
-              <span className="text-xs text-muted font-mono">2026</span>
             </div>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/" className="text-muted hover:text-foreground transition-colors">
