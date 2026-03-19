@@ -9,19 +9,16 @@ export function Logo({ className = "w-6 h-6" }: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {/* Wheel rim */}
-      <circle cx="12" cy="12" r="10" />
+      {/* Tire */}
+      <circle cx="12" cy="12" r="11" strokeWidth="1" />
+      {/* Rim */}
+      <circle cx="12" cy="12" r="9" />
       {/* Hub */}
-      <circle cx="12" cy="12" r="2" />
-      {/* Spokes */}
-      <line x1="12" y1="2" x2="12" y2="10" />
-      <line x1="12" y1="14" x2="12" y2="22" />
-      <line x1="2" y1="12" x2="10" y2="12" />
-      <line x1="14" y1="12" x2="22" y2="12" />
-      <line x1="4.93" y1="4.93" x2="10.59" y2="10.59" />
-      <line x1="13.41" y1="13.41" x2="19.07" y2="19.07" />
-      <line x1="19.07" y1="4.93" x2="13.41" y2="10.59" />
-      <line x1="10.59" y1="13.41" x2="4.93" y2="19.07" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      {/* 3 curved spokes — like a racing wheel */}
+      <path d="M12 10.5 C10 7, 6.5 5.5, 3.5 7" />
+      <path d="M13 10.8 C16.5 9, 19.5 10.5, 20.5 13.5" />
+      <path d="M11.5 13.5 C10 16, 8 19, 5 20" />
     </svg>
   );
 }
