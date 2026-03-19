@@ -4,9 +4,10 @@ import { ALL_RACES, getRaceStatus, getStageDay, CLASS_COLORS } from "@/lib/races
 import { countryFlag } from "@/lib/countryFlags";
 import { fetchRaceHighlights } from "@/lib/youtube";
 import { fetchRaceResults } from "@/lib/wikipedia";
-import { getTizUrl } from "@/lib/tiz";
+import { fetchTizVideos, getTizCategoryUrl } from "@/lib/tiz";
 import { HighlightsSection } from "@/components/HighlightsSection";
 import { RaceResultsPanel } from "@/components/RaceResultsPanel";
+import { TizPanel } from "@/components/TizPanel";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -39,11 +40,12 @@ export default async function RacePage({
 
   const status = getRaceStatus(race);
   const stageDay = getStageDay(race);
-  const [highlights, raceResults] = await Promise.all([
+  const [highlights, raceResults, tizVideos] = await Promise.all([
     fetchRaceHighlights(race.youtubeSearchTerm || race.name, 6),
     status !== "upcoming" ? fetchRaceResults(race.id) : Promise.resolve(null),
+    status !== "upcoming" ? fetchTizVideos(race.id) : Promise.resolve([]),
   ]);
-  const tizUrl = getTizUrl(race.id);
+  const tizCategoryUrl = getTizCategoryUrl(race.id);
 
   return (
     <div className="min-h-screen">
@@ -147,19 +149,6 @@ export default async function RacePage({
 
         {/* External links */}
         <div className="flex flex-wrap gap-3 mb-10">
-          {tizUrl && status !== "upcoming" && (
-            <a
-              href={tizUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 text-sm text-accent hover:bg-accent/10 hover:border-accent/50 transition-all"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              Full Race / Final KM
-            </a>
-          )}
           {race.pcsSlug && (
             <a
               href={`https://www.procyclingstats.com/race/${race.pcsSlug}/2026`}
@@ -187,6 +176,14 @@ export default async function RacePage({
             YouTube Highlights
           </a>
         </div>
+
+        {/* Tiz coverage */}
+        {tizVideos.length > 0 && tizCategoryUrl && (
+          <div className="mb-10">
+            <h2 className="text-lg font-semibold mb-4">Watch</h2>
+            <TizPanel videos={tizVideos} categoryUrl={tizCategoryUrl} />
+          </div>
+        )}
 
         {/* Results */}
         {raceResults && (raceResults.winner || raceResults.classifications.length > 0 || raceResults.stages.length > 0) && (

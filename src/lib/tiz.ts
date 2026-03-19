@@ -1,12 +1,15 @@
-// Tiz-cycling URL patterns for race pages
-// These link to the race category which has full replays + final km videos
+export interface TizVideo {
+  url: string;
+  title: string;
+  type: "full" | "final-km";
+  stageNumber?: number;
+}
 
+// Race ID → tiz category slug
 const TIZ_SLUGS: Record<string, string> = {
-  // Grand Tours
   "tdf": "tour-de-france",
   "giro": "giro-d-italia",
   "vuelta": "vuelta-a-espana",
-  // Stage races
   "pn": "paris-nice",
   "tirreno": "tirreno-adriatico",
   "catalan": "volta-a-catalunya",
@@ -16,13 +19,11 @@ const TIZ_SLUGS: Record<string, string> = {
   "suisse": "tour-de-suisse",
   "tdu": "tour-down-under",
   "uae": "uae-tour",
-  // Monuments
   "msr": "milano-sanremo",
   "rvv": "tour-of-flanders",
   "pr": "paris-roubaix",
   "lg": "liege-bastogne-liege",
   "lombardia": "giro-di-lombardia",
-  // One-day
   "strade": "strade-bianche",
   "e3": "e3-saxo-classic",
   "gw": "gent-wevelgem",
@@ -33,11 +34,97 @@ const TIZ_SLUGS: Record<string, string> = {
   "montreal": "gp-de-montreal",
 };
 
-export function getTizUrl(raceId: string): string | null {
-  const base = raceId.replace(/-\d{4}$/, "");
-  const yearMatch = raceId.match(/-(\d{4})$/);
-  const year = yearMatch ? yearMatch[1] : "2026";
-  const slug = TIZ_SLUGS[base];
+function getRaceBase(raceId: string): string {
+  return raceId.replace(/-\d{4}$/, "");
+}
+
+function getRaceYear(raceId: string): string {
+  return raceId.match(/-(\d{4})$/)?.[1] || "2026";
+}
+
+export function getTizCategoryUrl(raceId: string): string | null {
+  const slug = TIZ_SLUGS[getRaceBase(raceId)];
   if (!slug) return null;
-  return `https://tiz-cycling.tv/categories/${slug}-${year}/`;
+  return `https://tiz-cycling.tv/categories/${slug}-${getRaceYear(raceId)}/`;
+}
+
+// Keep the old name as an alias
+export function getTizUrl(raceId: string): string | null {
+  return getTizCategoryUrl(raceId);
+}
+
+function formatTitle(slug: string): string {
+  return slug
+    .replace(/^.*\/video\//, "")
+    .replace(/\/$/, "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function classifyVideo(url: string): TizVideo["type"] {
+  if (/last-\d+-km|final-km|final-\d+-km/.test(url)) return "final-km";
+  return "full";
+}
+
+function extractStageNumber(url: string): number | undefined {
+  const match = url.match(/stage-(\d+)/);
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
+export async function fetchTizVideos(raceId: string): Promise<TizVideo[]> {
+  const categoryUrl = getTizCategoryUrl(raceId);
+  if (!categoryUrl) return [];
+
+  // Fetch via tiz-cycling.io (accessible proxy)
+  const slug = TIZ_SLUGS[getRaceBase(raceId)];
+  const year = getRaceYear(raceId);
+  const ioUrl = `https://tiz-cycling.io/categories/${slug}-${year}/`;
+
+  try {
+    const res = await fetch(ioUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Extract video links
+    const linkRegex = /href="(https:\/\/tiz-cycling\.tv\/video\/[^"]+)"/g;
+    const seen = new Set<string>();
+    const videos: TizVideo[] = [];
+    let match;
+
+    while ((match = linkRegex.exec(html)) !== null) {
+      const url = match[1];
+      if (seen.has(url)) continue;
+      seen.add(url);
+
+      // Skip unrelated videos (like the random durango one that appears on every page)
+      const urlSlug = url.replace("https://tiz-cycling.tv/video/", "");
+      if (!urlSlug.includes(slug) && !urlSlug.includes(year)) continue;
+
+      videos.push({
+        url,
+        title: formatTitle(urlSlug),
+        type: classifyVideo(url),
+        stageNumber: extractStageNumber(url),
+      });
+    }
+
+    // Sort: stages ascending, final-km after full for same stage
+    videos.sort((a, b) => {
+      const stageA = a.stageNumber ?? 0;
+      const stageB = b.stageNumber ?? 0;
+      if (stageA !== stageB) return stageA - stageB;
+      if (a.type === "full" && b.type === "final-km") return -1;
+      if (a.type === "final-km" && b.type === "full") return 1;
+      return 0;
+    });
+
+    return videos;
+  } catch {
+    return [];
+  }
 }
