@@ -186,67 +186,146 @@ export default async function RacePage({
               )}
             </div>
 
-            {/* Right: Watch + Info */}
-            <div className="space-y-6">
-              {/* Watch section */}
-              {hasTiz && (
-                <div>
-                  <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">Watch</h2>
-                  <TizPanel videos={tizVideos} categoryUrl={tizCategoryUrl!} />
-                </div>
-              )}
-
-              {/* Race info — compact sidebar card */}
-              <div className="rounded-lg border border-border bg-card p-4">
-                <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Race Info</h2>
-                <dl className="space-y-2 text-sm">
-                  {raceResults?.winner && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Winner</dt>
-                      <dd className="font-semibold text-right">{raceResults.winner}</dd>
+            {/* Right sidebar — sticky */}
+            <div className="hidden lg:block">
+              <div className="sticky top-8 space-y-6">
+                {/* Watch on tiz */}
+                {hasTiz && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-xs font-medium uppercase tracking-wider text-muted">Watch</h2>
+                      <a
+                        href={tizCategoryUrl!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-zinc-600 hover:text-muted transition-colors"
+                      >
+                        all on tiz
+                      </a>
                     </div>
-                  )}
-                  {raceResults?.second && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted">2nd</dt>
-                      <dd className="text-zinc-400 text-right">{raceResults.second}</dd>
+                    <div className="space-y-1">
+                      {(() => {
+                        // Group by stage
+                        const hasStages = tizVideos.some((v) => v.stageNumber !== undefined);
+                        if (hasStages) {
+                          const stages = new Map<number, typeof tizVideos>();
+                          for (const v of tizVideos) {
+                            const key = v.stageNumber ?? 0;
+                            if (!stages.has(key)) stages.set(key, []);
+                            stages.get(key)!.push(v);
+                          }
+                          return Array.from(stages.entries())
+                            .sort(([a], [b]) => a - b)
+                            .map(([stageNum, videos]) => (
+                              <div
+                                key={stageNum}
+                                className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
+                              >
+                                <span className="text-sm text-foreground">
+                                  Stage {stageNum}
+                                </span>
+                                <div className="flex gap-1.5">
+                                  {videos.find((v) => v.type === "full") && (
+                                    <a
+                                      href={videos.find((v) => v.type === "full")!.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="rounded bg-blue/10 text-blue border border-blue/20 px-2 py-0.5 text-[10px] font-medium hover:bg-blue/20 transition-colors"
+                                    >
+                                      Full
+                                    </a>
+                                  )}
+                                  {videos.find((v) => v.type === "final-km") && (
+                                    <a
+                                      href={videos.find((v) => v.type === "final-km")!.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="rounded bg-accent/10 text-accent border border-accent/20 px-2 py-0.5 text-[10px] font-medium hover:bg-accent/20 transition-colors"
+                                    >
+                                      Last KM
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ));
+                        } else {
+                          // One-day race
+                          return tizVideos.map((v) => (
+                            <a
+                              key={v.url}
+                              href={v.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center justify-between rounded-lg border px-3 py-2 transition-colors ${
+                                v.type === "final-km"
+                                  ? "border-accent/20 bg-accent/5 hover:bg-accent/10"
+                                  : "border-blue/20 bg-blue/5 hover:bg-blue/10"
+                              }`}
+                            >
+                              <span className="text-sm text-foreground">
+                                {v.type === "full" ? "Full Race" : "Final KM"}
+                              </span>
+                              <span
+                                className={`text-[10px] font-medium ${
+                                  v.type === "final-km" ? "text-accent" : "text-blue"
+                                }`}
+                              >
+                                Watch
+                              </span>
+                            </a>
+                          ));
+                        }
+                      })()}
                     </div>
-                  )}
-                  {raceResults?.third && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted">3rd</dt>
-                      <dd className="text-zinc-400 text-right">{raceResults.third}</dd>
-                    </div>
-                  )}
-                  {raceResults?.totalTime && (
-                    <div className="flex justify-between border-t border-border/50 pt-2">
-                      <dt className="text-muted">Time</dt>
-                      <dd className="font-mono text-xs text-zinc-400">{raceResults.totalTime}</dd>
-                    </div>
-                  )}
-                  {raceResults?.distance && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Distance</dt>
-                      <dd className="font-mono text-xs text-zinc-400">{raceResults.distance} km</dd>
-                    </div>
-                  )}
-                  {!raceResults?.winner && race.distance && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Distance</dt>
-                      <dd className="font-mono text-xs text-zinc-400">{race.distance}</dd>
-                    </div>
-                  )}
-                  {race.stages && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Stages</dt>
-                      <dd className="font-mono text-xs text-zinc-400">{race.stages}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <dt className="text-muted">Class</dt>
-                    <dd className="text-zinc-400">{race.class}</dd>
                   </div>
-                </dl>
+                )}
+
+                {/* Race info */}
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Info</h2>
+                  <dl className="space-y-2 text-sm">
+                    {raceResults?.winner && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted">Winner</dt>
+                        <dd className="font-semibold text-right">{raceResults.winner}</dd>
+                      </div>
+                    )}
+                    {raceResults?.second && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted">2nd</dt>
+                        <dd className="text-zinc-400 text-right">{raceResults.second}</dd>
+                      </div>
+                    )}
+                    {raceResults?.third && (
+                      <div className="flex justify-between">
+                        <dt className="text-muted">3rd</dt>
+                        <dd className="text-zinc-400 text-right">{raceResults.third}</dd>
+                      </div>
+                    )}
+                    {(raceResults?.totalTime || race.distance || race.stages) && (
+                      <div className="border-t border-border/50 pt-2 space-y-2">
+                        {raceResults?.totalTime && (
+                          <div className="flex justify-between">
+                            <dt className="text-muted">Time</dt>
+                            <dd className="font-mono text-xs text-zinc-400">{raceResults.totalTime}</dd>
+                          </div>
+                        )}
+                        {(raceResults?.distance || race.distance) && (
+                          <div className="flex justify-between">
+                            <dt className="text-muted">Distance</dt>
+                            <dd className="font-mono text-xs text-zinc-400">{raceResults?.distance ? `${raceResults.distance} km` : race.distance}</dd>
+                          </div>
+                        )}
+                        {race.stages && (
+                          <div className="flex justify-between">
+                            <dt className="text-muted">Stages</dt>
+                            <dd className="font-mono text-xs text-zinc-400">{race.stages}</dd>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </dl>
+                </div>
               </div>
             </div>
           </div>
