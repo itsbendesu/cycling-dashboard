@@ -5,83 +5,102 @@ export interface YouTubeVideo {
   publishedAt: string;
   channelTitle: string;
   views?: number;
-  raceName?: string; // extracted from title if possible
 }
 
-// Channels that post race highlights (ordered by highlight quality)
-const HIGHLIGHT_CHANNELS = [
+// Official race organizer channels (post extended highlights)
+const ORGANIZER_CHANNELS = [
+  { id: "UCSpycUnuU0IVF7gGIhGojhg", name: "Tour de France" }, // ASO: TdF, Paris-Nice, Paris-Roubaix, Liège, Flèche, Dauphiné, Strade Bianche
+  { id: "UCe10BxbsFg9Kbmkg-ean_Dg", name: "Giro d'Italia" }, // RCS: Giro, Milano-Sanremo, Lombardia, Tirreno, Strade Bianche
+  { id: "UCf7iHZIcKEhiN34-fETtNCA", name: "La Vuelta" }, // Unipublic: Vuelta
+  { id: "UCfDfvvMARk4TKcC62ALi6eA", name: "TNT Sports Cycling" }, // Formerly Eurosport: Flanders, other classics
+];
+
+// Commentary/analysis channels (secondary, for races without organizer highlights)
+const COMMENTARY_CHANNELS = [
   { id: "UC77UtoyivVHkpApL0wGfH5w", name: "Lanterne Rouge" },
-  { id: "UC1sTqWskIXqSItyojGhXPyQ", name: "LR Cycling Podcast" },
   { id: "UCu7phdCr-raU7OaJfEpHZww", name: "GCN Racing" },
-  { id: "UCn7YuJaZmdmx_ERZH9r6eTA", name: "Chris Horner" },
 ];
 
-// Patterns that indicate a video is a race highlight (not a review, podcast, etc.)
-const HIGHLIGHT_PATTERNS = [
-  /stage\s*\d+/i,
-  /highlights?/i,
-  /recap/i,
-  /finish/i,
-  /attack/i,
-  /sprint/i,
-  /breakaway/i,
-  /summit/i,
-  /crash/i,
-  /won|wins|victory/i,
-  /paris.?nice/i,
-  /tirreno/i,
-  /milano.?sanremo|milan.?san.?remo/i,
-  /tour\s*(de|of)/i,
-  /giro/i,
-  /vuelta/i,
-  /roubaix/i,
-  /flanders|vlaanderen/i,
-  /li[eè]ge/i,
-  /lombardia/i,
-  /strade\s*bianche/i,
-  /amstel/i,
-  /fl[eè]che/i,
-  /san\s*sebasti[aá]n/i,
-  /romandie/i,
-  /dauphin[eé]/i,
-  /suisse/i,
-  /basque/i,
-  /catalunya/i,
-  /uae\s*tour/i,
-  /down\s*under/i,
-  /qu[eé]bec|montr[eé]al/i,
-];
+const ALL_CHANNELS = [...ORGANIZER_CHANNELS, ...COMMENTARY_CHANNELS];
 
-function isRaceHighlight(title: string): boolean {
-  return HIGHLIGHT_PATTERNS.some((p) => p.test(title));
+// Strict filter: only actual race recaps, not promos/previews/jerseys/etc.
+function isExtendedHighlight(title: string): boolean {
+  const t = title.toLowerCase();
+
+  // Must-have: these patterns indicate actual race footage recaps
+  const highlightPatterns = [
+    /extended\s*highlights?/,
+    /full\s*highlights?/,
+    /highlights?\s*(of|from)/,
+    /stage\s*\d+.*highlights?/,
+    /stage\s*\d+.*(recap|review|summary)/,
+    /highlights?\s*-?\s*stage/,
+    /race\s*highlights?/,
+    /last\s*km/,
+    /final\s*k(ilo)?m/,
+    /finish/,
+  ];
+
+  // Commentary channels: stage recaps are highlights too
+  const commentaryPatterns = [
+    /stage\s*\d+/,
+    /\|\s*(paris|tirreno|giro|tour|vuelta|strade|roubaix|flanders|liège|lombardia|amstel|flèche|romandie|dauph|suisse|basque|catalu|uae|down\s*under|québec|montréal|san\s*sebast)/i,
+  ];
+
+  // Must NOT match: these are filler content
+  const excludePatterns = [
+    /jersey\s*minute/,
+    /most\s*aggressive/,
+    /polka\s*dot/,
+    /preview/,
+    /prediction/,
+    /podcast/,
+    /how\s*to/,
+    /training/,
+    /bike\s*(check|review)/,
+    /unbox/,
+    /nutrition/,
+    /behind\s*the\s*scenes/,
+    /press\s*conference/,
+    /presentation/,
+    /discover\s*(stage|the\s*route)/,
+    /throwback/,
+    /best\s*of\s*rivals/,
+  ];
+
+  if (excludePatterns.some((p) => p.test(t))) return false;
+  if (highlightPatterns.some((p) => p.test(t))) return true;
+  if (commentaryPatterns.some((p) => p.test(t))) return true;
+
+  return false;
 }
 
-// Score videos: race highlights rank higher, recency matters
-function scoreVideo(video: YouTubeVideo): number {
+// Score: prefer extended highlights from organizers, then recency
+function scoreVideo(video: YouTubeVideo, isOrganizer: boolean): number {
   let score = 0;
-  const title = video.title.toLowerCase();
+  const t = video.title.toLowerCase();
 
-  // Strong highlight indicators
-  if (/stage\s*\d+/i.test(title)) score += 20;
-  if (/highlights?/i.test(title)) score += 15;
-  if (/full\s*(race|stage)/i.test(title)) score += 25;
+  // Extended highlights from organizers are gold
+  if (isOrganizer && /extended\s*highlights?/.test(t)) score += 50;
+  if (isOrganizer && /full\s*highlights?/.test(t)) score += 45;
+  if (isOrganizer && /last\s*km/.test(t)) score += 30;
+  if (isOrganizer && /highlights?/.test(t)) score += 35;
 
-  // Race name mentions
-  if (/grand\s*tour|giro|tour\s*de\s*france|vuelta/i.test(title)) score += 10;
-  if (/monument|roubaix|flanders|sanremo|li[eè]ge|lombardia/i.test(title)) score += 10;
+  // Stage number = concrete race content
+  if (/stage\s*\d+/.test(t)) score += 15;
 
-  // Negative signals (not highlights)
-  if (/preview|prediction|podcast|review|unbox|bike\s*check/i.test(title)) score -= 15;
-  if (/how\s*to|training|nutrition|best\s*of/i.test(title)) score -= 20;
+  // Grand Tour content gets a boost
+  if (/giro|tour\s*de\s*france|vuelta/.test(t)) score += 10;
+  if (/monument|roubaix|flanders|sanremo|liège|lombardia/.test(t)) score += 10;
 
-  // Recency bonus (within last 7 days gets big boost)
+  // Commentary channels get lower base score
+  if (!isOrganizer) score -= 10;
+
+  // Recency
   const daysAgo = (Date.now() - new Date(video.publishedAt).getTime()) / (1000 * 60 * 60 * 24);
-  if (daysAgo < 1) score += 30;
-  else if (daysAgo < 3) score += 20;
-  else if (daysAgo < 7) score += 10;
-
-  // View count bonus
-  if (video.views && video.views > 50000) score += 5;
+  if (daysAgo < 1) score += 25;
+  else if (daysAgo < 3) score += 15;
+  else if (daysAgo < 7) score += 8;
 
   return score;
 }
@@ -93,9 +112,10 @@ interface FeedEntry {
   published: string;
   channelName: string;
   views: number;
+  isOrganizer: boolean;
 }
 
-function parseXMLFeed(xml: string, channelName: string): FeedEntry[] {
+function parseXMLFeed(xml: string, channelName: string, isOrganizer: boolean): FeedEntry[] {
   const entries: FeedEntry[] = [];
   const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
   let match;
@@ -117,6 +137,7 @@ function parseXMLFeed(xml: string, channelName: string): FeedEntry[] {
         published: published || "",
         channelName,
         views: viewsStr ? parseInt(viewsStr, 10) : 0,
+        isOrganizer,
       });
     }
   }
@@ -133,45 +154,61 @@ function decodeXMLEntities(str: string): string {
     .replace(/&#39;/g, "'");
 }
 
-export async function fetchHighlights(maxResults: number = 12): Promise<YouTubeVideo[]> {
-  const allEntries: FeedEntry[] = [];
+async function fetchChannelFeed(
+  channel: { id: string; name: string },
+  isOrganizer: boolean
+): Promise<FeedEntry[]> {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.id}`,
+      { next: { revalidate: 1800 } }
+    );
+    if (!res.ok) return [];
+    const xml = await res.text();
+    return parseXMLFeed(xml, channel.name, isOrganizer);
+  } catch {
+    return [];
+  }
+}
 
-  // Fetch all channel feeds in parallel
-  const feedPromises = HIGHLIGHT_CHANNELS.map(async (channel) => {
-    try {
-      const res = await fetch(
-        `https://www.youtube.com/feeds/videos.xml?channel_id=${channel.id}`,
-        { next: { revalidate: 1800 } } // cache for 30 minutes
-      );
-      if (!res.ok) return [];
-      const xml = await res.text();
-      return parseXMLFeed(xml, channel.name);
-    } catch {
-      return [];
-    }
-  });
+export async function fetchHighlights(maxResults: number = 12): Promise<YouTubeVideo[]> {
+  // Fetch all feeds in parallel
+  const feedPromises = [
+    ...ORGANIZER_CHANNELS.map((ch) => fetchChannelFeed(ch, true)),
+    ...COMMENTARY_CHANNELS.map((ch) => fetchChannelFeed(ch, false)),
+  ];
 
   const results = await Promise.all(feedPromises);
-  for (const entries of results) {
-    allEntries.push(...entries);
-  }
+  const allEntries = results.flat();
 
-  // Convert to YouTubeVideo and filter for race content
-  const videos: YouTubeVideo[] = allEntries
-    .filter((e) => isRaceHighlight(e.title))
-    .map((e) => ({
-      id: e.videoId,
-      title: e.title,
-      thumbnail: e.thumbnail,
-      publishedAt: e.published,
-      channelTitle: e.channelName,
-      views: e.views,
-    }));
+  // Filter to only race highlights
+  const highlights = allEntries.filter((e) => isExtendedHighlight(e.title));
 
-  // Sort by score (best highlights first)
-  videos.sort((a, b) => scoreVideo(b) - scoreVideo(a));
+  // Convert and score
+  const videos: (YouTubeVideo & { _score: number })[] = highlights.map((e) => ({
+    id: e.videoId,
+    title: e.title,
+    thumbnail: e.thumbnail,
+    publishedAt: e.published,
+    channelTitle: e.channelName,
+    views: e.views,
+    _score: scoreVideo(
+      {
+        id: e.videoId,
+        title: e.title,
+        thumbnail: e.thumbnail,
+        publishedAt: e.published,
+        channelTitle: e.channelName,
+        views: e.views,
+      },
+      e.isOrganizer
+    ),
+  }));
 
-  return videos.slice(0, maxResults);
+  // Sort by score descending
+  videos.sort((a, b) => b._score - a._score);
+
+  return videos.slice(0, maxResults).map(({ _score, ...v }) => v);
 }
 
 // Search highlights relevant to a specific race
@@ -181,18 +218,25 @@ export async function fetchRaceHighlights(
 ): Promise<YouTubeVideo[]> {
   const all = await fetchHighlights(50);
 
-  // Build search patterns from race name
+  // Build search terms from race name
   const searchTerms = raceName
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // strip accents for matching
     .replace(/['']/g, "")
     .split(/[\s-]+/)
-    .filter((t) => t.length > 2 && !["the", "and", "des", "del"].includes(t));
+    .filter((t) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025"].includes(t));
 
   const relevant = all.filter((v) => {
-    const title = v.title.toLowerCase();
-    // At least one significant term from the race name must appear
+    const title = v.title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
     return searchTerms.some((term) => title.includes(term));
   });
 
-  return relevant.slice(0, maxResults);
+  // If no race-specific results, return general highlights
+  return relevant.length > 0
+    ? relevant.slice(0, maxResults)
+    : all.slice(0, maxResults);
 }
