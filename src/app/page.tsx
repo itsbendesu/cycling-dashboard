@@ -1,8 +1,23 @@
 import { CalendarView } from "@/components/CalendarView";
 import { NextUpSidebar } from "@/components/NextUpSidebar";
+import { LatestCoverage } from "@/components/LatestCoverage";
+import { ALL_RACES, getRaceStatus } from "@/lib/races";
+import { fetchLatestCoverage } from "@/lib/tiz";
 
+export const revalidate = 1800;
 
 export default async function Home() {
+  const today = new Date().toISOString().split("T")[0];
+  const completedOrActive = ALL_RACES.filter((r) => {
+    const status = getRaceStatus(r, today);
+    return status === "completed" || status === "active";
+  }).sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+  const latestCoverage = await fetchLatestCoverage(
+    completedOrActive.map((r) => ({ id: r.id, name: r.name, endDate: r.endDate })),
+    8
+  );
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -43,7 +58,8 @@ export default async function Home() {
 
           {/* Right: Sidebar */}
           <div className="hidden lg:block">
-            <div className="sticky top-8">
+            <div className="sticky top-8 space-y-6">
+              <LatestCoverage items={latestCoverage} />
               <NextUpSidebar />
             </div>
           </div>

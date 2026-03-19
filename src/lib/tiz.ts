@@ -42,6 +42,12 @@ function getRaceYear(raceId: string): string {
   return raceId.match(/-(\d{4})$/)?.[1] || "2026";
 }
 
+export interface TizCoverageItem {
+  raceId: string;
+  raceName: string;
+  video: TizVideo;
+}
+
 export function getTizCategoryUrl(raceId: string): string | null {
   const slug = TIZ_SLUGS[getRaceBase(raceId)];
   if (!slug) return null;
@@ -101,9 +107,10 @@ export async function fetchTizVideos(raceId: string): Promise<TizVideo[]> {
       if (seen.has(url)) continue;
       seen.add(url);
 
-      // Skip unrelated videos (like the random durango one that appears on every page)
+      // Skip unrelated videos and women's/ladies races (calendar tracks men's WT)
       const urlSlug = url.replace("https://tiz-cycling.tv/video/", "");
       if (!urlSlug.includes(slug) && !urlSlug.includes(year)) continue;
+      if (/ladies|women|donne|femme/i.test(urlSlug)) continue;
 
       videos.push({
         url,
@@ -127,4 +134,37 @@ export async function fetchTizVideos(raceId: string): Promise<TizVideo[]> {
   } catch {
     return [];
   }
+}
+
+// Fetch latest coverage across multiple races — most recent races first
+export async function fetchLatestCoverage(
+  races: { id: string; name: string; endDate: string }[],
+  maxItems: number = 8
+): Promise<TizCoverageItem[]> {
+  // Fetch all races in parallel
+  const results = await Promise.all(
+    races.map(async (race) => {
+      const videos = await fetchTizVideos(race.id);
+      return videos.map((video) => ({
+        raceId: race.id,
+        raceName: race.name,
+        video,
+        _endDate: race.endDate,
+      }));
+    })
+  );
+
+  // Flatten and sort: most recent race (by endDate) first, then highest stage, full before final-km
+  const all = results.flat();
+  all.sort((a, b) => {
+    if (a._endDate !== b._endDate) return b._endDate.localeCompare(a._endDate);
+    const stageA = a.video.stageNumber ?? 999;
+    const stageB = b.video.stageNumber ?? 999;
+    if (stageA !== stageB) return stageB - stageA;
+    if (a.video.type === "full" && b.video.type === "final-km") return -1;
+    if (a.video.type === "final-km" && b.video.type === "full") return 1;
+    return 0;
+  });
+
+  return all.slice(0, maxItems).map(({ _endDate, ...item }) => item);
 }

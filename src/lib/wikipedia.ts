@@ -25,7 +25,9 @@ export interface RaceResults {
   winnerNat: string | null;
   winnerTeam: string | null;
   second: string | null;
+  secondTeam: string | null;
   third: string | null;
+  thirdTeam: string | null;
   totalTime: string | null;
   distance: string | null;
   stages: StageResult[];
@@ -132,9 +134,13 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
     const totalTime = wikitext.match(/\|\s*time\s*=\s*([^\n]+)/)?.[1]?.trim() || null;
     const distance = wikitext.match(/\|\s*distance\s*=\s*([^\n]+)/)?.[1]?.trim() || null;
 
-    // Get team name from wikitext template
+    // Get team names from wikitext templates
     const winnerTeamMatch = wikitext.match(/\|\s*first_team\s*=\s*\{\{[^|]*\|([^|}\n]+)/);
     const winnerTeam = winnerTeamMatch ? winnerTeamMatch[1].trim() : null;
+    const secondTeamMatch = wikitext.match(/\|\s*second_team\s*=\s*\{\{[^|]*\|([^|}\n]+)/);
+    const secondTeam = secondTeamMatch ? secondTeamMatch[1].trim() : null;
+    const thirdTeamMatch = wikitext.match(/\|\s*third_team\s*=\s*\{\{[^|]*\|([^|}\n]+)/);
+    const thirdTeam = thirdTeamMatch ? thirdTeamMatch[1].trim() : null;
 
     // Get sections to find classifications
     const sectionsRes = await fetch(
@@ -232,7 +238,9 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
       winnerNat,
       winnerTeam,
       second,
+      secondTeam,
       third,
+      thirdTeam,
       totalTime,
       distance,
       stages: stageResults,

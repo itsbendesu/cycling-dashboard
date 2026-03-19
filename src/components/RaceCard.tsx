@@ -108,7 +108,7 @@ export function RaceCardCompact({ race }: { race: Race }) {
       <span className="text-base">{countryFlag(race.countryCode)}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground truncate">
-          {race.shortName || race.name}
+          {race.name}
         </p>
         <p className="text-xs text-muted">
           {formatDateRange(race.startDate, race.endDate)}

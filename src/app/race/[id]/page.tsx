@@ -7,7 +7,7 @@ import { fetchRaceResults } from "@/lib/wikipedia";
 import { fetchTizVideos, getTizCategoryUrl } from "@/lib/tiz";
 import { HighlightsSection } from "@/components/HighlightsSection";
 import { RaceResultsPanel } from "@/components/RaceResultsPanel";
-import { TizPanel } from "@/components/TizPanel";
+import { TizSidebar } from "@/components/TizSidebar";
 
 function formatDateShort(dateStr: string): string {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -192,93 +192,7 @@ export default async function RacePage({
               <div className="sticky top-8 space-y-6">
                 {/* Watch on tiz */}
                 {hasTiz && (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-xs font-medium uppercase tracking-wider text-muted">Watch</h2>
-                      <a
-                        href={tizCategoryUrl!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-muted/60 hover:text-muted transition-colors"
-                      >
-                        all on tiz
-                      </a>
-                    </div>
-                    <div className="space-y-1">
-                      {(() => {
-                        // Group by stage
-                        const hasStages = tizVideos.some((v) => v.stageNumber !== undefined);
-                        if (hasStages) {
-                          const stages = new Map<number, typeof tizVideos>();
-                          for (const v of tizVideos) {
-                            const key = v.stageNumber ?? 0;
-                            if (!stages.has(key)) stages.set(key, []);
-                            stages.get(key)!.push(v);
-                          }
-                          return Array.from(stages.entries())
-                            .sort(([a], [b]) => a - b)
-                            .map(([stageNum, videos]) => (
-                              <div
-                                key={stageNum}
-                                className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
-                              >
-                                <span className="text-sm text-foreground">
-                                  Stage {stageNum}
-                                </span>
-                                <div className="flex gap-1.5">
-                                  {videos.find((v) => v.type === "full") && (
-                                    <a
-                                      href={videos.find((v) => v.type === "full")!.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="rounded bg-blue/10 text-blue border border-blue/20 px-2 py-0.5 text-[10px] font-medium hover:bg-blue/20 transition-colors"
-                                    >
-                                      Full
-                                    </a>
-                                  )}
-                                  {videos.find((v) => v.type === "final-km") && (
-                                    <a
-                                      href={videos.find((v) => v.type === "final-km")!.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="rounded bg-accent/10 text-accent border border-accent/20 px-2 py-0.5 text-[10px] font-medium hover:bg-accent/20 transition-colors"
-                                    >
-                                      Last KM
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-                            ));
-                        } else {
-                          // One-day race
-                          return tizVideos.map((v) => (
-                            <a
-                              key={v.url}
-                              href={v.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`flex items-center justify-between rounded-lg border px-3 py-2 transition-colors ${
-                                v.type === "final-km"
-                                  ? "border-accent/20 bg-accent/5 hover:bg-accent/10"
-                                  : "border-blue/20 bg-blue/5 hover:bg-blue/10"
-                              }`}
-                            >
-                              <span className="text-sm text-foreground">
-                                {v.type === "full" ? "Full Race" : "Final KM"}
-                              </span>
-                              <span
-                                className={`text-[10px] font-medium ${
-                                  v.type === "final-km" ? "text-accent" : "text-blue"
-                                }`}
-                              >
-                                Watch
-                              </span>
-                            </a>
-                          ));
-                        }
-                      })()}
-                    </div>
-                  </div>
+                  <TizSidebar videos={tizVideos} categoryUrl={tizCategoryUrl!} />
                 )}
 
                 {/* Race info */}

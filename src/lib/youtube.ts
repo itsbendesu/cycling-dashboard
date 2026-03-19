@@ -86,29 +86,37 @@ async function searchYouTube(query: string, maxResults: number = 10): Promise<Yo
     if (!res.ok) return [];
     const html = await res.text();
 
-    // Extract video data from the initial data JSON
-    const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/);
-    if (!dataMatch) return [];
+    // Find ytInitialData start and extract a workable chunk
+    const startMarker = "var ytInitialData = ";
+    const startIdx = html.indexOf(startMarker);
+    if (startIdx === -1) return [];
+    const jsonStart = startIdx + startMarker.length;
+
+    // Find matching end — look for </script> after the start
+    const endIdx = html.indexOf(";</script>", jsonStart);
+    if (endIdx === -1) return [];
+    const jsonStr = html.slice(jsonStart, endIdx);
 
     const videos: YouTubeVideo[] = [];
-    // Extract video IDs and titles using regex on the JSON blob
-    const videoRegex = /"videoId":"([^"]+)"[^}]*?"title":\{"runs":\[\{"text":"([^"]+)"/g;
     const seen = new Set<string>();
+
+    // Find videoRenderer blocks which contain videoId + title pairs
+    const rendererRegex = /"videoRenderer":\{"videoId":"([^"]+)"[\s\S]*?"title":\{"runs":\[\{"text":"([^"]+)"/g;
     let m;
-    while ((m = videoRegex.exec(dataMatch[1])) !== null && videos.length < maxResults) {
+    while ((m = rendererRegex.exec(jsonStr)) !== null && videos.length < maxResults) {
       const [, videoId, title] = m;
       if (seen.has(videoId)) continue;
       seen.add(videoId);
 
-      // Try to extract channel name near this video
-      const channelMatch = dataMatch[1].slice(m.index, m.index + 2000)
-        .match(/"ownerText":\{"runs":\[\{"text":"([^"]+)"/);
+      // Extract channel name from nearby context
+      const nearby = jsonStr.slice(m.index, m.index + 3000);
+      const channelMatch = nearby.match(/"ownerText":\{"runs":\[\{"text":"([^"]+)"/);
 
       videos.push({
         id: videoId,
         title: decodeXMLEntities(title),
         thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-        publishedAt: "", // not available from search
+        publishedAt: "",
         channelTitle: channelMatch ? channelMatch[1] : "",
       });
     }
@@ -160,22 +168,50 @@ export async function fetchHighlights(maxResults: number = 60): Promise<YouTubeV
   return rssHighlights.slice(0, maxResults);
 }
 
+// Build match phrases for a race name
+export function buildRaceMatchers(raceName: string): string[] {
+  const clean = raceName
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['']/g, "")
+    .replace(/\d{4}.*/, "") // strip year and anything after
+    .replace(/\s*highlights?\s*/g, "")
+    .trim();
+
+  const matchers: string[] = [clean];
+
+  // Also add hyphenated version and without hyphens
+  if (clean.includes("-")) matchers.push(clean.replace(/-/g, " "));
+  if (clean.includes(" ")) matchers.push(clean.replace(/\s+/g, "-"));
+
+  // Add key distinctive words (but not generic ones like "tour", "stage", "race")
+  const genericWords = new Set(["tour", "de", "the", "and", "des", "del", "la", "a", "di", "van", "d", "gran", "grand", "gp", "classic"]);
+  const distinctive = clean.split(/[\s-]+/).filter((w) => w.length > 2 && !genericWords.has(w));
+  if (distinctive.length > 0) {
+    // Only use distinctive words if they're specific enough (e.g. "nice", "roubaix", "flanders")
+    matchers.push(...distinctive.filter((w) => w.length > 3));
+  }
+
+  return matchers;
+}
+
+export function videoMatchesRace(title: string, matchers: string[]): boolean {
+  const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Require the full race name or a distinctive word match
+  return matchers.some((m) => t.includes(m));
+}
+
 // Get highlights for a specific race — uses search to find older ones
 export async function fetchRaceHighlights(
   raceName: string,
   maxResults: number = 6
 ): Promise<YouTubeVideo[]> {
-  // First check RSS feeds
-  const rss = await fetchRSSHighlights();
-  const searchTerms = raceName
-    .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/['']/g, "").split(/[\s-]+/)
-    .filter((t) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025"].includes(t));
+  const matchers = buildRaceMatchers(raceName);
 
-  const fromRSS = rss.filter((v) => {
-    const title = v.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    return searchTerms.some((term) => title.includes(term));
-  });
+  // Check RSS feeds first
+  const rss = await fetchRSSHighlights();
+  const fromRSS = rss.filter((v) => videoMatchesRace(v.title, matchers));
 
   if (fromRSS.length >= maxResults) {
     return fromRSS.slice(0, maxResults);
@@ -200,15 +236,8 @@ export async function fetchAllRaceHighlights(
   const unmatched: string[] = [];
 
   for (const { id, searchTerm } of raceQueries) {
-    const terms = searchTerm
-      .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/['']/g, "").split(/[\s-]+/)
-      .filter((t) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025", "highlights"].includes(t));
-
-    const matched = rss.filter((v) => {
-      const title = v.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return terms.some((term) => title.includes(term));
-    });
+    const matchers = buildRaceMatchers(searchTerm);
+    const matched = rss.filter((v) => videoMatchesRace(v.title, matchers));
 
     if (matched.length > 0) {
       results[id] = matched;

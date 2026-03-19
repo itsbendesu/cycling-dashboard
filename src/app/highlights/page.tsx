@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ALL_RACES, getRaceStatus } from "@/lib/races";
-import { fetchHighlights, fetchAllRaceHighlights, YouTubeVideo } from "@/lib/youtube";
+import { fetchHighlights, fetchAllRaceHighlights, buildRaceMatchers, videoMatchesRace, YouTubeVideo } from "@/lib/youtube";
 import { getTizUrl } from "@/lib/tiz";
 
 import { HighlightsClient } from "./HighlightsClient";
@@ -58,16 +58,11 @@ export default async function HighlightsPage() {
       videoRaceMap[v.id].push(raceId);
     }
   }
-  // Also check RSS highlights against race names
+  // Also check RSS highlights against race names using proper matching
   for (const race of relevantRaces) {
-    const terms = (race.youtubeSearchTerm || race.name)
-      .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/['']/g, "").split(/[\s-]+/)
-      .filter((t: string) => t.length > 2 && !["the", "and", "des", "del", "2026", "2025", "highlights"].includes(t));
-
+    const matchers = buildRaceMatchers(race.youtubeSearchTerm || race.name);
     for (const v of allVideos) {
-      const title = v.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (terms.some((term: string) => title.includes(term)) && !videoRaceMap[v.id]?.includes(race.id)) {
+      if (videoMatchesRace(v.title, matchers) && !videoRaceMap[v.id]?.includes(race.id)) {
         videoRaceMap[v.id].push(race.id);
       }
     }
