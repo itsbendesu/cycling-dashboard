@@ -9,9 +9,15 @@ import { HighlightsSection } from "@/components/HighlightsSection";
 import { RaceResultsPanel } from "@/components/RaceResultsPanel";
 import { TizPanel } from "@/components/TizPanel";
 
-function formatDate(dateStr: string): string {
+function formatDateShort(dateStr: string): string {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatDateLong(dateStr: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -40,164 +46,209 @@ export default async function RacePage({
 
   const status = getRaceStatus(race);
   const stageDay = getStageDay(race);
+  const hasResults = status !== "upcoming";
+
   const [highlights, raceResults, tizVideos] = await Promise.all([
     fetchRaceHighlights(race.youtubeSearchTerm || race.name, 6),
-    status !== "upcoming" ? fetchRaceResults(race.id) : Promise.resolve(null),
-    status !== "upcoming" ? fetchTizVideos(race.id) : Promise.resolve([]),
+    hasResults ? fetchRaceResults(race.id) : Promise.resolve(null),
+    hasResults ? fetchTizVideos(race.id) : Promise.resolve([]),
   ]);
   const tizCategoryUrl = getTizCategoryUrl(race.id);
+  const hasResultsData = raceResults && (raceResults.winner || raceResults.classifications.length > 0 || raceResults.stages.length > 0);
+  const hasTiz = tizVideos.length > 0 && tizCategoryUrl;
 
   return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            Calendar
-          </Link>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Calendar
+            </Link>
+            <nav className="flex items-center gap-3">
+              {race.pcsSlug && (
+                <a
+                  href={`https://www.procyclingstats.com/race/${race.pcsSlug}/2026`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted hover:text-foreground transition-colors"
+                >
+                  PCS
+                </a>
+              )}
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(race.youtubeSearchTerm || race.name + " 2026")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted hover:text-foreground transition-colors"
+              >
+                YouTube
+              </a>
+              {tizCategoryUrl && (
+                <a
+                  href={tizCategoryUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted hover:text-foreground transition-colors"
+                >
+                  tiz
+                </a>
+              )}
+            </nav>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* Race header */}
-        <div className="mb-8">
-          <div className="flex items-start gap-4 mb-4">
-            <span className="text-4xl">{countryFlag(race.countryCode)}</span>
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold">{race.name}</h1>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium uppercase tracking-wider ${CLASS_COLORS[race.class]}`}
-                >
-                  {race.class}
-                </span>
-              </div>
-              <p className="text-muted">
-                {race.country} · {formatDate(race.startDate)}
-                {race.startDate !== race.endDate && ` – ${formatDate(race.endDate)}`}
-              </p>
-            </div>
-          </div>
-
-          {/* Status bar */}
-          <div className="flex flex-wrap gap-4 mt-6">
-            {status === "active" && (
-              <div className="rounded-lg border border-green/30 bg-green/5 px-4 py-3 flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-green animate-pulse" />
-                <div>
-                  <p className="text-sm font-semibold text-green">
-                    Race in progress
-                    {stageDay && race.stages && ` — Stage ${stageDay} of ${race.stages}`}
-                  </p>
-                </div>
-              </div>
-            )}
-            {status === "upcoming" && (
-              <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3">
-                <p className="text-sm font-semibold text-accent">
-                  {daysUntil(race.startDate)} days until start
-                </p>
-              </div>
-            )}
-            {status === "completed" && (
-              <div className="rounded-lg border border-border bg-card px-4 py-3">
-                <p className="text-sm text-muted">Race completed</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Info grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-          {race.distance && (
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">Distance</p>
-              <p className="text-lg font-bold font-mono">{race.distance}</p>
-            </div>
-          )}
-          {race.stages && (
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">Stages</p>
-              <p className="text-lg font-bold font-mono">{race.stages}</p>
-            </div>
-          )}
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-xs text-muted uppercase tracking-wider mb-1">Classification</p>
-            <p className="text-lg font-bold">{race.class}</p>
-          </div>
-          {race.winner2025 && (
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">
-                2025 Winner
-              </p>
-              <p className="text-lg font-bold">{race.winner2025}</p>
-            </div>
-          )}
-          {race.estimated && (
-            <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">Note</p>
-              <p className="text-sm text-zinc-400 italic">Dates estimated from historical patterns</p>
-            </div>
-          )}
-        </div>
-
-        {/* External links */}
-        <div className="flex flex-wrap gap-3 mb-10">
-          {race.pcsSlug && (
-            <a
-              href={`https://www.procyclingstats.com/race/${race.pcsSlug}/2026`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted hover:text-foreground hover:border-zinc-600 transition-all"
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {/* Race header — compact */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">{countryFlag(race.countryCode)}</span>
+            <h1 className="text-xl font-bold">{race.name}</h1>
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${CLASS_COLORS[race.class]}`}
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-              ProCyclingStats
-            </a>
-          )}
-          <a
-            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(race.youtubeSearchTerm || race.name + " 2026")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted hover:text-foreground hover:border-zinc-600 transition-all"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
-            </svg>
-            YouTube Highlights
-          </a>
+              {race.class}
+            </span>
+            {status === "active" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-green/20 px-2.5 py-0.5 text-xs font-medium text-green border border-green/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
+                {stageDay && race.stages ? `Stage ${stageDay}/${race.stages}` : "Live"}
+              </span>
+            )}
+            {status === "upcoming" && daysUntil(race.startDate) <= 14 && (
+              <span className="inline-flex items-center rounded-full bg-accent/20 px-2.5 py-0.5 text-xs font-medium text-accent border border-accent/30">
+                {daysUntil(race.startDate)}d
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-muted">
+            {formatDateShort(race.startDate)}
+            {race.startDate !== race.endDate && ` – ${formatDateShort(race.endDate)}`}
+            {race.distance && ` · ${race.distance}`}
+            {race.stages && ` · ${race.stages} stages`}
+            {race.estimated && " · dates estimated"}
+          </p>
         </div>
 
-        {/* Tiz coverage */}
-        {tizVideos.length > 0 && tizCategoryUrl && (
-          <div className="mb-10">
-            <h2 className="text-lg font-semibold mb-4">Watch</h2>
-            <TizPanel videos={tizVideos} categoryUrl={tizCategoryUrl} />
-          </div>
-        )}
-
-        {/* Results */}
-        {raceResults && (raceResults.winner || raceResults.classifications.length > 0 || raceResults.stages.length > 0) && (
-          <div className="mb-10">
-            <h2 className="text-lg font-semibold mb-4">Results</h2>
-            <RaceResultsPanel results={raceResults} />
-          </div>
-        )}
-
-        {/* Highlights */}
-        {highlights.length > 0 && (
+        {/* Upcoming race — simple layout */}
+        {status === "upcoming" && (
           <div>
-            <h2 className="text-lg font-semibold mb-4">Video Highlights</h2>
-            <HighlightsSection videos={highlights} />
+            <div className="rounded-lg border border-accent/30 bg-accent/5 px-6 py-8 text-center mb-8">
+              <p className="text-3xl font-bold font-mono text-accent mb-1">
+                {daysUntil(race.startDate)}
+              </p>
+              <p className="text-sm text-muted">
+                days until {formatDateLong(race.startDate)}
+              </p>
+            </div>
+
+            {race.winner2025 && (
+              <div className="rounded-lg border border-border bg-card p-4 mb-8">
+                <p className="text-xs text-muted uppercase tracking-wider mb-1">2025 Winner</p>
+                <p className="font-semibold">{race.winner2025}</p>
+              </div>
+            )}
+
+            {highlights.length > 0 && (
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">Highlights</h2>
+                <HighlightsSection videos={highlights} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Completed/Active race — two-column layout */}
+        {hasResults && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+            {/* Left: Results + Highlights */}
+            <div className="space-y-10">
+              {hasResultsData && (
+                <div>
+                  <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-4">Results</h2>
+                  <RaceResultsPanel results={raceResults!} />
+                </div>
+              )}
+
+              {highlights.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-4">Highlights</h2>
+                  <HighlightsSection videos={highlights} />
+                </div>
+              )}
+            </div>
+
+            {/* Right: Watch + Info */}
+            <div className="space-y-6">
+              {/* Watch section */}
+              {hasTiz && (
+                <div>
+                  <h2 className="text-sm font-medium uppercase tracking-wider text-muted mb-3">Watch</h2>
+                  <TizPanel videos={tizVideos} categoryUrl={tizCategoryUrl!} />
+                </div>
+              )}
+
+              {/* Race info — compact sidebar card */}
+              <div className="rounded-lg border border-border bg-card p-4">
+                <h2 className="text-xs font-medium uppercase tracking-wider text-muted mb-3">Race Info</h2>
+                <dl className="space-y-2 text-sm">
+                  {raceResults?.winner && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Winner</dt>
+                      <dd className="font-semibold text-right">{raceResults.winner}</dd>
+                    </div>
+                  )}
+                  {raceResults?.second && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted">2nd</dt>
+                      <dd className="text-zinc-400 text-right">{raceResults.second}</dd>
+                    </div>
+                  )}
+                  {raceResults?.third && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted">3rd</dt>
+                      <dd className="text-zinc-400 text-right">{raceResults.third}</dd>
+                    </div>
+                  )}
+                  {raceResults?.totalTime && (
+                    <div className="flex justify-between border-t border-border/50 pt-2">
+                      <dt className="text-muted">Time</dt>
+                      <dd className="font-mono text-xs text-zinc-400">{raceResults.totalTime}</dd>
+                    </div>
+                  )}
+                  {raceResults?.distance && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Distance</dt>
+                      <dd className="font-mono text-xs text-zinc-400">{raceResults.distance} km</dd>
+                    </div>
+                  )}
+                  {!raceResults?.winner && race.distance && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Distance</dt>
+                      <dd className="font-mono text-xs text-zinc-400">{race.distance}</dd>
+                    </div>
+                  )}
+                  {race.stages && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Stages</dt>
+                      <dd className="font-mono text-xs text-zinc-400">{race.stages}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <dt className="text-muted">Class</dt>
+                    <dd className="text-zinc-400">{race.class}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
           </div>
         )}
       </main>
