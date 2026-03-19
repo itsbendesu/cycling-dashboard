@@ -81,11 +81,13 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
 
   if (!results.winner && !gc && results.stages.length === 0) return null;
 
+  const hasExpandable = gc || results.stages.length > 0 || otherClassifications.length > 0;
+
   return (
-    <div>
-      {/* Podium card — always visible */}
+    <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
+      {/* Podium — always visible */}
       {results.winner && (
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
+        <div>
           <div className="flex items-center gap-3">
             <div className="text-2xl">🏆</div>
             <div>
@@ -116,7 +118,7 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
       )}
 
       {/* Expand toggle */}
-      {(gc || results.stages.length > 0 || otherClassifications.length > 0) && (
+      {hasExpandable && (
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-1.5 mt-3 text-xs text-muted hover:text-foreground transition-colors"
