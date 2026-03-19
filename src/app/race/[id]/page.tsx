@@ -30,6 +30,8 @@ function daysUntil(dateStr: string): number {
   );
 }
 
+export const revalidate = 1800; // revalidate every 30 min
+
 export async function generateStaticParams() {
   return ALL_RACES.map((race) => ({ id: race.id }));
 }

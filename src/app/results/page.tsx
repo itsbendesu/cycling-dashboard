@@ -1,3 +1,5 @@
+export const revalidate = 1800;
+
 import Link from "next/link";
 import { ALL_RACES, getRaceStatus, CLASS_COLORS } from "@/lib/races";
 import { fetchRaceResults, RaceResults } from "@/lib/wikipedia";
