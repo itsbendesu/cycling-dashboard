@@ -81,6 +81,9 @@ export default async function ResultsPage() {
                 Calendar
               </Link>
               <span className="text-foreground font-medium">Results</span>
+              <Link href="/highlights" className="text-muted hover:text-foreground transition-colors">
+                Highlights
+              </Link>
             </nav>
           </div>
         </div>

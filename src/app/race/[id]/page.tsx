@@ -4,6 +4,7 @@ import { ALL_RACES, getRaceStatus, getStageDay, CLASS_COLORS } from "@/lib/races
 import { countryFlag } from "@/lib/countryFlags";
 import { fetchRaceHighlights } from "@/lib/youtube";
 import { fetchRaceResults } from "@/lib/wikipedia";
+import { getTizUrl } from "@/lib/tiz";
 import { HighlightsSection } from "@/components/HighlightsSection";
 import { RaceResultsPanel } from "@/components/RaceResultsPanel";
 
@@ -42,6 +43,7 @@ export default async function RacePage({
     fetchRaceHighlights(race.youtubeSearchTerm || race.name, 6),
     status !== "upcoming" ? fetchRaceResults(race.id) : Promise.resolve(null),
   ]);
+  const tizUrl = getTizUrl(race.id);
 
   return (
     <div className="min-h-screen">
@@ -145,6 +147,19 @@ export default async function RacePage({
 
         {/* External links */}
         <div className="flex flex-wrap gap-3 mb-10">
+          {tizUrl && status !== "upcoming" && (
+            <a
+              href={tizUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 text-sm text-accent hover:bg-accent/10 hover:border-accent/50 transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Full Race / Final KM
+            </a>
+          )}
           {race.pcsSlug && (
             <a
               href={`https://www.procyclingstats.com/race/${race.pcsSlug}/2026`}

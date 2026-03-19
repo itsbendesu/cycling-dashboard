@@ -1,11 +1,7 @@
 import { CalendarView } from "@/components/CalendarView";
 import { NextUpSidebar } from "@/components/NextUpSidebar";
-import { HighlightsSection } from "@/components/HighlightsSection";
-import { fetchHighlights } from "@/lib/youtube";
 
 export default async function Home() {
-  const highlights = await fetchHighlights(9);
-
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -33,7 +29,7 @@ export default async function Home() {
               <a href="/results" className="text-muted hover:text-foreground transition-colors">
                 Results
               </a>
-              <a href="#highlights" className="text-muted hover:text-foreground transition-colors">
+              <a href="/highlights" className="text-muted hover:text-foreground transition-colors">
                 Highlights
               </a>
             </nav>
@@ -53,15 +49,6 @@ export default async function Home() {
               </p>
             </div>
             <CalendarView />
-
-            {/* Highlights */}
-            <div id="highlights" className="mt-12">
-              <h2 className="text-xl font-semibold mb-1">Recent Highlights</h2>
-              <p className="text-sm text-muted mb-4">
-                Race highlights from Lanterne Rouge, GCN Racing, and more.
-              </p>
-              <HighlightsSection videos={highlights} />
-            </div>
           </div>
 
           {/* Right: Sidebar */}
