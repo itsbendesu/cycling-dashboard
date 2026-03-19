@@ -33,13 +33,14 @@ export interface RaceResults {
 }
 
 // Map race IDs to Wikipedia article names
+// Use readable Wikipedia article titles — encoded at fetch time
 const WIKI_SLUGS: Record<string, string> = {
   // Stage races
   "tdf": "Tour_de_France",
-  "giro": "Giro_d%%27Italia",
+  "giro": "Giro_d'Italia",
   "vuelta": "Vuelta_a_España",
-  "pn": "Paris%%E2%%80%%93Nice",
-  "tirreno": "Tirreno%%E2%%80%%93Adriatico",
+  "pn": "Paris–Nice",
+  "tirreno": "Tirreno–Adriatico",
   "catalan": "Volta_a_Catalunya",
   "pv": "Itzulia_Basque_Country",
   "romandie": "Tour_de_Romandie",
@@ -48,14 +49,14 @@ const WIKI_SLUGS: Record<string, string> = {
   "tdu": "Tour_Down_Under",
   "uae": "UAE_Tour",
   // One-day
-  "msr": "Milan%%E2%%80%%93San_Remo",
+  "msr": "Milan–San_Remo",
   "rvv": "Tour_of_Flanders",
-  "pr": "Paris%%E2%%80%%93Roubaix",
-  "lg": "Liège%%E2%%80%%93Bastogne%%E2%%80%%93Liège",
+  "pr": "Paris–Roubaix",
+  "lg": "Liège–Bastogne–Liège",
   "lombardia": "Giro_di_Lombardia",
   "strade": "Strade_Bianche",
   "e3": "E3_Saxo_Classic",
-  "gw": "Ghent%%E2%%80%%93Wevelgem",
+  "gw": "Ghent–Wevelgem",
   "aw": "Amstel_Gold_Race",
   "fw": "La_Flèche_Wallonne",
   "sanSeb": "Clásica_de_San_Sebastián",
@@ -107,11 +108,12 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
   if (!slug) return null;
 
   const pageTitle = `${year}_${slug}`;
+  const encodedTitle = encodeURIComponent(pageTitle);
 
   try {
     // First get the infobox data
     const infoRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&prop=wikitext&section=0&format=json`,
+      `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&prop=wikitext&section=0&format=json`,
       { next: { revalidate: 3600 } }
     );
 
@@ -136,7 +138,7 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
 
     // Get sections to find classifications
     const sectionsRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&prop=sections&format=json`,
+      `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&prop=sections&format=json`,
       { next: { revalidate: 3600 } }
     );
     const sectionsData = await sectionsRes.json();
@@ -158,7 +160,7 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
     for (const section of recentStages) {
       try {
         const stageRes = await fetch(
-          `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&section=${section.index}&prop=text&format=json`,
+          `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&section=${section.index}&prop=text&format=json`,
           { next: { revalidate: 3600 } }
         );
         const stageData = await stageRes.json();
@@ -200,7 +202,7 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
     for (const section of classificationSections) {
       try {
         const classRes = await fetch(
-          `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&section=${section.index}&prop=text&format=json`,
+          `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&section=${section.index}&prop=text&format=json`,
           { next: { revalidate: 3600 } }
         );
         const classData = await classRes.json();
@@ -245,7 +247,7 @@ export async function raceHasResults(raceId: string, year: number = 2026): Promi
 
   try {
     const res = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&titles=${year}_${slug}&format=json`,
+      `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(`${year}_${slug}`)}&format=json`,
       { next: { revalidate: 3600 } }
     );
     const data = await res.json();

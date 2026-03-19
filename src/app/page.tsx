@@ -30,6 +30,9 @@ export default async function Home() {
             </div>
             <nav className="flex items-center gap-4 text-sm">
               <span className="text-foreground font-medium">Calendar</span>
+              <a href="/results" className="text-muted hover:text-foreground transition-colors">
+                Results
+              </a>
               <a href="#highlights" className="text-muted hover:text-foreground transition-colors">
                 Highlights
               </a>
