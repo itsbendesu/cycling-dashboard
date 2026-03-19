@@ -67,7 +67,7 @@ export default async function ResultsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/" className="text-lg font-bold tracking-tight">
-                Peloton<sup className="text-[10px] font-mono text-muted ml-0.5 -top-2 relative">26</sup>
+                VeloTron<sup className="text-[10px] font-mono text-muted ml-0.5 -top-2 relative">26</sup>
               </Link>
             </div>
             <nav className="flex items-center gap-4 text-sm">

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Peloton — Cycling Race Dashboard",
+  title: "VeloTron — Cycling Race Dashboard",
   description: "Follow the 2025 UCI WorldTour season. Race calendar, results, and highlights.",
 };
 

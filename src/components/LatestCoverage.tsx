@@ -9,7 +9,7 @@ interface CoverageItem {
   video: TizVideo;
 }
 
-const WATCHED_KEY = "peloton-watched";
+const WATCHED_KEY = "velotron-watched";
 
 function getWatched(): Set<string> {
   if (typeof window === "undefined") return new Set();
