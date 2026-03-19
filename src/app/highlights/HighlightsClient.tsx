@@ -116,7 +116,7 @@ export function HighlightsClient({
               <span>All races</span>
               <span
                 className={`text-xs font-mono ${
-                  selectedRace === null ? "text-background/60" : "text-zinc-600"
+                  selectedRace === null ? "text-background/60" : "text-muted/60"
                 }`}
               >
                 {videos.length}
@@ -143,7 +143,7 @@ export function HighlightsClient({
                       className={`text-[10px] ${
                         selectedRace === race.id
                           ? "text-background/40"
-                          : "text-zinc-600"
+                          : "text-muted/60"
                       }`}
                     >
                       tiz
@@ -153,7 +153,7 @@ export function HighlightsClient({
                     className={`text-xs font-mono ${
                       selectedRace === race.id
                         ? "text-background/60"
-                        : "text-zinc-600"
+                        : "text-muted/60"
                     }`}
                   >
                     {race.videoCount}

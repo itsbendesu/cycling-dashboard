@@ -108,12 +108,12 @@ export default async function ResultsPage() {
                 <Link
                   key={race.id}
                   href={`/race/${race.id}`}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 hover:bg-card-hover hover:border-zinc-600 transition-all group"
+                  className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 hover:bg-card-hover hover:border-muted transition-all group"
                 >
                   <span className="text-xl">{countryFlag(race.countryCode)}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold group-hover:text-white">
+                      <span className="text-sm font-semibold group-hover:text-foreground">
                         {race.name}
                       </span>
                       <span

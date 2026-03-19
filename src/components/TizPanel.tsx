@@ -66,7 +66,7 @@ export function TizPanel({
             href={video.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 hover:bg-card-hover hover:border-zinc-600 transition-all group"
+            className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 hover:bg-card-hover hover:border-muted transition-all group"
           >
             {/* Icon */}
             <div
@@ -89,7 +89,7 @@ export function TizPanel({
 
             {/* Title */}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground group-hover:text-white truncate">
+              <p className="text-sm font-medium text-foreground group-hover:text-foreground truncate">
                 {video.stageNumber ? `Stage ${video.stageNumber}` : video.title.split(/\d{4}/)[0].trim()}
                 {video.type === "final-km" && (
                   <span className="text-muted font-normal"> — Final KM</span>
@@ -116,7 +116,7 @@ export function TizPanel({
 
             {/* External arrow */}
             <svg
-              className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 shrink-0"
+              className="w-4 h-4 text-muted/60 group-hover:text-muted shrink-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

@@ -63,7 +63,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="border-t border-border mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <p className="text-xs text-zinc-600 text-center">
+          <p className="text-xs text-muted/60 text-center">
             Race data curated from UCI calendar. Not affiliated with UCI, ASO, or RCS Sport.
           </p>
         </div>

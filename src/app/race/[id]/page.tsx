@@ -198,7 +198,7 @@ export default async function RacePage({
                         href={tizCategoryUrl!}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] text-zinc-600 hover:text-muted transition-colors"
+                        className="text-[10px] text-muted/60 hover:text-muted transition-colors"
                       >
                         all on tiz
                       </a>
@@ -293,13 +293,13 @@ export default async function RacePage({
                     {raceResults?.second && (
                       <div className="flex justify-between">
                         <dt className="text-muted">2nd</dt>
-                        <dd className="text-zinc-400 text-right">{raceResults.second}</dd>
+                        <dd className="text-muted text-right">{raceResults.second}</dd>
                       </div>
                     )}
                     {raceResults?.third && (
                       <div className="flex justify-between">
                         <dt className="text-muted">3rd</dt>
-                        <dd className="text-zinc-400 text-right">{raceResults.third}</dd>
+                        <dd className="text-muted text-right">{raceResults.third}</dd>
                       </div>
                     )}
                     {(raceResults?.totalTime || race.distance || race.stages) && (
@@ -307,19 +307,19 @@ export default async function RacePage({
                         {raceResults?.totalTime && (
                           <div className="flex justify-between">
                             <dt className="text-muted">Time</dt>
-                            <dd className="font-mono text-xs text-zinc-400">{raceResults.totalTime}</dd>
+                            <dd className="font-mono text-xs text-muted">{raceResults.totalTime}</dd>
                           </div>
                         )}
                         {(raceResults?.distance || race.distance) && (
                           <div className="flex justify-between">
                             <dt className="text-muted">Distance</dt>
-                            <dd className="font-mono text-xs text-zinc-400">{raceResults?.distance ? `${raceResults.distance} km` : race.distance}</dd>
+                            <dd className="font-mono text-xs text-muted">{raceResults?.distance ? `${raceResults.distance} km` : race.distance}</dd>
                           </div>
                         )}
                         {race.stages && (
                           <div className="flex justify-between">
                             <dt className="text-muted">Stages</dt>
-                            <dd className="font-mono text-xs text-zinc-400">{race.stages}</dd>
+                            <dd className="font-mono text-xs text-muted">{race.stages}</dd>
                           </div>
                         )}
                       </div>

@@ -30,7 +30,7 @@ function StatusBadge({ status, race }: { status: RaceStatus; race: Race }) {
   }
   if (status === "completed") {
     return (
-      <span className="inline-flex items-center rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-400">
+      <span className="inline-flex items-center rounded-full bg-card px-2.5 py-0.5 text-xs font-medium text-muted">
         Completed
       </span>
     );
@@ -57,7 +57,7 @@ export function RaceCard({ race }: { race: Race }) {
       className={`group block rounded-lg border transition-all ${
         status === "active"
           ? "border-green/30 bg-green/5 hover:border-green/50"
-          : "border-border bg-card hover:bg-card-hover hover:border-zinc-600"
+          : "border-border bg-card hover:bg-card-hover hover:border-muted"
       }`}
     >
       <div className="p-4">
@@ -65,7 +65,7 @@ export function RaceCard({ race }: { race: Race }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg">{countryFlag(race.countryCode)}</span>
-              <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-white">
+              <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-foreground">
                 {race.name}
               </h3>
             </div>
@@ -89,7 +89,7 @@ export function RaceCard({ race }: { race: Race }) {
           </div>
         </div>
         {race.estimated && (
-          <p className="mt-2 text-[10px] text-zinc-600 italic">Dates estimated</p>
+          <p className="mt-2 text-[10px] text-muted/60 italic">Dates estimated</p>
         )}
       </div>
     </Link>

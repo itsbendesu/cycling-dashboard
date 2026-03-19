@@ -418,7 +418,7 @@ export const CLASS_COLORS: Record<RaceClass, string> = {
   "Monument": "bg-purple-500/20 text-purple-400 border-purple-500/30",
   "WT Stage Race": "bg-blue-500/20 text-blue-400 border-blue-500/30",
   "WT One Day": "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  "Pro Series": "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+  "Pro Series": "bg-zinc-500/20 text-muted border-zinc-500/30",
 };
 
 export const STAGE_TYPE_ICONS: Record<Stage["type"], string> = {

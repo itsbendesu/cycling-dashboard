@@ -37,7 +37,7 @@ function ResultsTable({
             <tr
               key={r.rank}
               className={`border-b border-border/50 ${
-                r.rank <= 3 ? "text-foreground" : "text-zinc-400"
+                r.rank <= 3 ? "text-foreground" : "text-muted"
               }`}
             >
               <td className="py-2 pr-2 font-mono text-xs">
@@ -47,7 +47,7 @@ function ResultsTable({
                       r.rank === 1
                         ? "bg-yellow-500/20 text-yellow-400"
                         : r.rank === 2
-                          ? "bg-zinc-400/20 text-zinc-300"
+                          ? "bg-zinc-400/20 text-foreground"
                           : "bg-amber-700/20 text-amber-600"
                     }`}
                   >
@@ -66,7 +66,7 @@ function ResultsTable({
                 </div>
                 <div className="text-xs text-muted sm:hidden">{r.team}</div>
               </td>
-              <td className="py-2 pr-2 text-zinc-500 hidden sm:table-cell text-xs">
+              <td className="py-2 pr-2 text-muted hidden sm:table-cell text-xs">
                 {r.team}
               </td>
               <td className="py-2 text-right font-mono text-xs">{r.time}</td>
@@ -119,14 +119,14 @@ export function RaceResultsPanel({ results }: { results: RaceResults }) {
             <div className="flex gap-6 mt-3 pl-11 text-sm">
               {results.second && (
                 <div>
-                  <span className="text-zinc-500">2.</span>{" "}
-                  <span className="text-zinc-300">{results.second}</span>
+                  <span className="text-muted">2.</span>{" "}
+                  <span className="text-foreground">{results.second}</span>
                 </div>
               )}
               {results.third && (
                 <div>
-                  <span className="text-zinc-500">3.</span>{" "}
-                  <span className="text-zinc-300">{results.third}</span>
+                  <span className="text-muted">3.</span>{" "}
+                  <span className="text-foreground">{results.third}</span>
                 </div>
               )}
             </div>
