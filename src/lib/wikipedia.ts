@@ -153,11 +153,8 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
         /(general|points|mountains|young|teams?)\s+classification/i.test(s.line) && s.level === "3"
     );
 
-    // Fetch stage results (limit to last 3 stages to avoid too many requests)
-    const recentStages = stageSections.slice(-3);
-    const stageResults: StageResult[] = [];
-
-    for (const section of recentStages) {
+    // Fetch ALL stage results in parallel
+    const stagePromises = stageSections.map(async (section: { line: string; index: string }) => {
       try {
         const stageRes = await fetch(
           `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&section=${section.index}&prop=text&format=json`,
@@ -184,22 +181,21 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
         });
 
         if (results.length > 0) {
-          stageResults.push({
+          return {
             stageNumber: stageNum,
             stageName: section.line,
             results,
             gcAfterStage: gcAfter,
-          });
+          } as StageResult;
         }
+        return null;
       } catch {
-        // Skip failed stage fetches
+        return null;
       }
-    }
+    });
 
-    // Fetch classification standings
-    const classifications: ClassificationStanding[] = [];
-
-    for (const section of classificationSections) {
+    // Fetch ALL classification standings in parallel
+    const classPromises = classificationSections.map(async (section: { line: string; index: string }) => {
       try {
         const classRes = await fetch(
           `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&section=${section.index}&prop=text&format=json`,
@@ -213,16 +209,23 @@ export async function fetchRaceResults(raceId: string, year: number = 2026): Pro
         if (table.length) {
           const results = parseResultsTable($, table);
           if (results.length > 0) {
-            classifications.push({
-              name: section.line,
-              results,
-            });
+            return { name: section.line, results } as ClassificationStanding;
           }
         }
+        return null;
       } catch {
-        // Skip failed classification fetches
+        return null;
       }
-    }
+    });
+
+    // Wait for all fetches
+    const [stageResultsRaw, classificationsRaw] = await Promise.all([
+      Promise.all(stagePromises),
+      Promise.all(classPromises),
+    ]);
+
+    const stageResults = stageResultsRaw.filter((s): s is StageResult => s !== null);
+    const classifications = classificationsRaw.filter((c): c is ClassificationStanding => c !== null);
 
     return {
       winner,
