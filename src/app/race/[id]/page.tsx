@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ALL_RACES, getRaceStatus, getStageDay, CLASS_COLORS } from "@/lib/races";
 import { countryFlag } from "@/lib/countryFlags";
-import { searchYouTubeHighlights } from "@/lib/youtube";
+import { fetchRaceHighlights } from "@/lib/youtube";
 import { HighlightsSection } from "@/components/HighlightsSection";
 
 function formatDate(dateStr: string): string {
@@ -36,8 +36,8 @@ export default async function RacePage({
 
   const status = getRaceStatus(race);
   const stageDay = getStageDay(race);
-  const highlights = await searchYouTubeHighlights(
-    race.youtubeSearchTerm || `${race.name} 2025 highlights`,
+  const highlights = await fetchRaceHighlights(
+    race.youtubeSearchTerm || race.name,
     6
   );
 

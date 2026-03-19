@@ -1,10 +1,10 @@
 import { CalendarView } from "@/components/CalendarView";
 import { NextUpSidebar } from "@/components/NextUpSidebar";
 import { HighlightsSection } from "@/components/HighlightsSection";
-import { searchYouTubeHighlights } from "@/lib/youtube";
+import { fetchHighlights } from "@/lib/youtube";
 
 export default async function Home() {
-  const highlights = await searchYouTubeHighlights("cycling race 2025 highlights GCN", 6);
+  const highlights = await fetchHighlights(9);
 
   return (
     <div className="min-h-screen">
@@ -55,13 +55,7 @@ export default async function Home() {
             <div id="highlights" className="mt-12">
               <h2 className="text-xl font-semibold mb-1">Recent Highlights</h2>
               <p className="text-sm text-muted mb-4">
-                Latest race highlights from YouTube.
-                {!process.env.YOUTUBE_API_KEY && (
-                  <span className="text-zinc-600">
-                    {" "}
-                    Set YOUTUBE_API_KEY for live results.
-                  </span>
-                )}
+                Race highlights from Lanterne Rouge, GCN Racing, and more.
               </p>
               <HighlightsSection videos={highlights} />
             </div>
