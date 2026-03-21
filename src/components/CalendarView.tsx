@@ -12,6 +12,7 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "Monuments", value: "Monument" },
   { label: "WT Stage", value: "WT Stage Race" },
   { label: "WT One Day", value: "WT One Day" },
+  { label: "Pro Series", value: "Pro Series" },
 ];
 
 function groupByMonth(races: Race[]): Record<string, Race[]> {
