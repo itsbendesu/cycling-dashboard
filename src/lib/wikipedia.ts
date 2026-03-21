@@ -64,6 +64,23 @@ const WIKI_SLUGS: Record<string, string> = {
   "sanSeb": "Clásica_de_San_Sebastián",
   "quebec": "Grand_Prix_Cycliste_de_Québec",
   "montreal": "Grand_Prix_Cycliste_de_Montréal",
+  // Pro Series — Stage Races
+  "algarve": "Volta_ao_Algarve",
+  "alps": "Tour_of_the_Alps",
+  "turkey": "Presidential_Cycling_Tour_of_Turkey",
+  "belgium-tour": "Baloise_Belgium_Tour",
+  "deutschland": "Deutschland_Tour",
+  "britain": "Tour_of_Britain",
+  "luxembourg": "Tour_de_Luxembourg",
+  "langkawi": "Tour_de_Langkawi",
+  // Pro Series — One-Day Races
+  "kbk": "Kuurne–Brussels–Kuurne",
+  "scheldeprijs": "Scheldeprijs",
+  "brabantse": "Brabantse_Pijl",
+  "maryland": "Maryland_Cycling_Classic",
+  "emilia": "Giro_dell'Emilia",
+  "tre-valli": "Tre_Valli_Varesine",
+  "paris-tours": "Paris–Tours",
 };
 
 function getWikiSlug(raceId: string): string | null {

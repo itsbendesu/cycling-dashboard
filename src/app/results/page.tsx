@@ -119,7 +119,9 @@ export default async function ResultsPage() {
                             ? "Mon"
                             : race.class === "WT Stage Race"
                               ? "WT"
-                              : "1D"}
+                              : race.class === "Pro Series"
+                                ? "Pro"
+                                : "1D"}
                       </span>
                     </div>
                     <p className="text-xs text-muted">
